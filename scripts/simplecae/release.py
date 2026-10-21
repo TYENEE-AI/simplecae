@@ -7,7 +7,7 @@ from .case import sha256
 def delivery_files(root, include_validation=True, include_audit=True):
     root=Path(root)
     files=[root/name for name in ('SKILL.md','pyproject.toml','requirements-lock.txt','.gitignore')]
-    files.extend(root/name for name in ('README.md','README.zh-CN.md','CHANGELOG.md','CONTRIBUTING.md','LICENSE','NOTICE.md','打开Viewer.cmd','Open_Viewer.cmd','setup.py','MANIFEST.in') if (root/name).is_file())
+    files.extend(root/name for name in ('README.md','README.en.md','README.zh-CN.md','CHANGELOG.md','CONTRIBUTING.md','LICENSE','NOTICE.md','打开Viewer.cmd','Open_Viewer.cmd','setup.py','MANIFEST.in') if (root/name).is_file())
     folders=['agents','assets','examples','references','scripts','tests','licenses']
     if include_validation:folders.append('validation')
     for folder in folders:
