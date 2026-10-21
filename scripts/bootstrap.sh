@@ -3,7 +3,7 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 python="python3"
-ccx="${SIMPLECAE_CCX:-ccx}"
+ccx="${SIMPLECAE_CCX:-}"
 venv="$root/.venv-linux"
 while (($#)); do
     case "$1" in
@@ -22,12 +22,12 @@ while (($#)); do
         *) echo "Unknown argument: $1" >&2; exit 2;;
     esac
 done
-"$python" -c 'import sys,struct; assert sys.version_info >= (3,11) and struct.calcsize("P")==8, "Use 64-bit Python 3.11 or newer"'
 if [[ -e "$venv/Scripts/python.exe" ]]; then
     echo "This directory contains a Windows environment; choose a separate Linux --venv." >&2
     exit 2
 fi
 if [[ ! -x "$venv/bin/python" ]]; then
+    "$python" -c 'import sys,struct,venv,ensurepip; assert sys.version_info >= (3,11) and struct.calcsize("P")==8, "Use full 64-bit Python 3.11+ with venv/ensurepip; supply --python PATH"'
     if [[ -e "$venv" ]]; then
         echo "The selected environment exists but has no working Linux Python. Choose a fresh --venv; no files were removed." >&2
         exit 2
@@ -38,7 +38,14 @@ if [[ ! -x "$venv/bin/python" ]]; then
     }
 fi
 runtime="$venv/bin/python"
-"$runtime" -m pip install --no-cache-dir -e "$root"
+if "$runtime" "$root/scripts/runtime_ready.py"; then
+    echo "Reusing the existing runtime; no dependency download needed."
+else
+    "$runtime" -m pip install --no-cache-dir -e "$root"
+fi
+if [[ -z "$ccx" ]]; then
+    ccx="$("$runtime" -c 'from simplecae.solver import find_ccx; print(find_ccx())')"
+fi
 if ! "$runtime" -c 'import gmsh; gmsh.initialize(); gmsh.finalize()'; then
     echo "Gmsh native libraries are missing. Ubuntu prerequisites: libglu1-mesa libxft2 libxcursor1 libxinerama1 libgomp1. Install them with your package manager." >&2
     exit 1

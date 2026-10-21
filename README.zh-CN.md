@@ -66,6 +66,12 @@
 
 ## 安装运行环境
 
+当前目录包含 1.6.0 的首次使用流程修复。[本次验证范围](validation/README.md)
+单独说明；旧发布凭证已归档，不作为当前源码的验证声明或安装门槛。
+
+若要安装到 Agent 的技能目录，先做下节的“安装到 Agent”，再进入安装目标运行
+以下命令，只建立一次环境。直接让 Agent 使用当前源码目录则无需再复制一份。
+
 源码放在可写目录，准备 **64位Python 3.11以上**，推荐共同基线Python 3.11。
 首次下载依赖需要联网；以下命令在SimpleCAE目录执行。
 
@@ -73,14 +79,16 @@
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap.ps1
-.\.venv\Scripts\Activate.ps1
-simplecae --version
-simplecae quickstart --example all --out outputs/first-001
+.\.venv\Scripts\python.exe scripts/simplecae_cli.py --version
+# 可选：只运行一个真实求解示例
+.\.venv\Scripts\python.exe scripts/simplecae_cli.py quickstart --out outputs/first-001
 ```
 
-激活受限时用 `.\.venv\Scripts\python.exe scripts/simplecae_cli.py` 替换
-`simplecae`。脚本下载锁定Python依赖及SHA-256核验过的CalculiX2.23；
-自选解释器／求解器加 `-Python PATH`、`-Ccx PATH`。
+无需激活环境。脚本优先复用符合依赖范围的本地环境和已配置求解器；需要新装时
+只安装运行依赖。`-Locked` 留给需要复现完整测试依赖的维护者。新下载的求解器
+仍在解压前校验完整性。自选解释器／求解器加 `-Python PATH`、`-Ccx PATH`。
+Python 必须包含 `venv` 和 `ensurepip`；Agent 自带的精简版可能没有，可直接指定
+机器上已有的完整版 Python。已有正常环境不需要另找系统 Python。
 
 **Ubuntu / bash**
 
@@ -90,9 +98,9 @@ simplecae quickstart --example all --out outputs/first-001
 sudo apt-get update
 sudo apt-get install python3-venv calculix-ccx libglu1-mesa libxft2 libxcursor1 libxinerama1 libgomp1
 bash scripts/bootstrap.sh
-source .venv-linux/bin/activate
-simplecae --version
-simplecae quickstart --example all --out outputs/first-001
+.venv-linux/bin/python scripts/simplecae_cli.py --version
+# 可选：只运行一个真实求解示例
+.venv-linux/bin/python scripts/simplecae_cli.py quickstart --out outputs/first-001
 ```
 
 所选Python必须>=3.11，必要时加 `--python /path/to/python3.11`；
@@ -100,17 +108,32 @@ simplecae quickstart --example all --out outputs/first-001
 Linux使用独立 `.venv-linux`，保留共享目录中的Windows求解器配置。
 Ubuntu依赖按声明版本范围解析，复现时记录 `doctor` 输出。
 
+已有正常环境可直接开始用户任务。`quickstart --example all`、完整 pytest、许可证
+审计和发布验证都不是首次使用的必经步骤；全部示例仅供需要了解不同结果时选用。
+已有 quickstart 结果可以直接查看，需要重新求解时再使用新目录，避免覆盖旧证据。
+单独打开 Viewer 不会启动求解。
+
 已有环境也可用 `python -m simplecae`。wheel含运行资源及示例；
 安装到Agent的skill使用**源码文件夹**。[依赖说明](references/dependencies.md)。
 
 ## 安装到 Agent
 
 可直接让Agent“读取这个目录的SKILL.md并使用SimpleCAE”。需要自动发现时，
-先看目标，再安装已验证的源码：
+直接安装源码文件夹即可；查看目标是可选步骤：
 
 ```text
 python scripts/install_local.py --agent codex --show-target
 python scripts/install_local.py --agent codex
+```
+
+普通安装不要求发布凭证，不反复计算源码、备份或安装副本的 SHA-256；凭证缺失或
+过期都不会阻塞安装，也不需要重新生成凭证或对比 GitHub 文件。
+`--verify-release` 只供维护者主动审计发布源码；`--development` 兼容普通安装，
+同样不要求凭证。下载求解器的完整性检查和分析结果有效性检查仍保留。
+DeepSeek Harness 项目级安装可用：
+
+```powershell
+python scripts/install_local.py --skills-root 'C:\你的工作区\.dsh\skills'
 ```
 
 | 宿主 | `--agent` | 默认发现目录 |

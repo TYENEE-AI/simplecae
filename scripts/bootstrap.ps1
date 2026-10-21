@@ -1,18 +1,50 @@
-param([string]$Python = 'python', [string]$Ccx = '')
+param([string]$Python = 'python', [string]$Ccx = '', [switch]$Locked)
 $ErrorActionPreference = 'Stop'
 $simplecaeRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $simplecaeVenv = Join-Path $simplecaeRoot '.venv'
-& $Python -c "import sys,struct; assert sys.version_info >= (3,11) and struct.calcsize('P') == 8, 'Use 64-bit Python 3.11 or newer; pass -Python PATH'"
-if ($LASTEXITCODE -ne 0) { throw 'A working 64-bit Python 3.11+ is required. Supply its path with -Python PATH.' }
 if (-not (Test-Path -LiteralPath (Join-Path $simplecaeVenv 'Scripts\python.exe'))) {
+    & $Python -c "import sys,struct,venv,ensurepip; assert sys.version_info >= (3,11) and struct.calcsize('P') == 8"
+    if ($LASTEXITCODE -ne 0) { throw 'Use a full 64-bit Python 3.11+ with venv and ensurepip. Some Agent-bundled Pythons omit these. Pass -Python PATH to an existing full Python installation.' }
     & $Python -m venv $simplecaeVenv
     if ($LASTEXITCODE -ne 0) { throw 'Python environment creation failed' }
 }
 $simplecaePython = Join-Path $simplecaeVenv 'Scripts\python.exe'
-& $simplecaePython -m pip install --no-cache-dir -r (Join-Path $simplecaeRoot 'requirements-lock.txt')
-if ($LASTEXITCODE -ne 0) { throw 'Locked dependency installation failed' }
-& $simplecaePython -m pip install --no-cache-dir --no-deps -e "${simplecaeRoot}[test]"
-if ($LASTEXITCODE -ne 0) { throw 'Python dependency installation failed' }
+& $simplecaePython (Join-Path $PSScriptRoot 'runtime_ready.py')
+$simplecaeRuntimeReady = $LASTEXITCODE -eq 0
+if ($Locked) {
+    & $simplecaePython -m pip install --no-cache-dir -r (Join-Path $simplecaeRoot 'requirements-lock.txt')
+    if ($LASTEXITCODE -ne 0) { throw 'Locked dependency installation failed' }
+    & $simplecaePython -m pip install --no-cache-dir --no-deps -e $simplecaeRoot
+    if ($LASTEXITCODE -ne 0) { throw 'Python package installation failed' }
+} elseif (-not $simplecaeRuntimeReady) {
+    & $simplecaePython -m pip install --no-cache-dir -e $simplecaeRoot
+    if ($LASTEXITCODE -ne 0) { throw 'Python runtime installation failed' }
+} else { Write-Host 'Reusing the existing runtime; no dependency download needed.' }
+if (-not $Ccx) {
+    # Reuse explicit environment/config/PATH discovery, including custom solvers.
+    $simplecaeFindCode = @'
+import sys
+sys.path.insert(0,sys.argv[1])
+from simplecae.solver import find_ccx
+try:
+    print(find_ccx())
+except (FileNotFoundError, ValueError):
+    sys.exit(1)
+'@
+    $simplecaeFound = & $simplecaePython -c $simplecaeFindCode (Join-Path $simplecaeRoot 'scripts')
+    if ($LASTEXITCODE -eq 0) { $Ccx = [string]($simplecaeFound | Select-Object -Last 1) }
+    else {
+        $simplecaeConfigured = $env:SIMPLECAE_CCX
+        $simplecaeConfigPath = Join-Path $simplecaeRoot '.tools/runtime.json'
+        if (Test-Path -LiteralPath $simplecaeConfigPath) {
+            $simplecaeSettings = Get-Content -Raw -LiteralPath $simplecaeConfigPath | ConvertFrom-Json
+            $simplecaeConfigured = $simplecaeConfigured -or $simplecaeSettings.ccx_by_platform.Windows -or $simplecaeSettings.ccx
+        }
+        if ($simplecaeConfigured) {
+            throw 'Configured solver unavailable. Supply -Ccx PATH or correct .tools/runtime.json; no alternate solver was silently selected.'
+        }
+    }
+}
 if ($Ccx) {
     $simplecaeCcx = (Resolve-Path -LiteralPath $Ccx).Path
 } else {

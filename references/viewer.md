@@ -4,13 +4,13 @@
 
 ## 首次打开示例
 
-完成 bootstrap 后双击根目录 `打开Viewer.cmd`。没有会话时会先求解三网格数学参考，再建立 `outputs/viewer-demo`；已有 `outputs/first-001` 结果时直接复用。关闭命令行窗口停止本机服务。也可运行：
+完成 bootstrap 后双击根目录 `打开Viewer.cmd`（部分发行目录名为 `Open_Viewer.cmd`）。已有 `outputs/first-001/pass/result.json` 时复用，否则直接创建空会话，等待 Agent 添加实际分析结果，不会自动启动求解。默认会话目录若残留未完成文件，会另建新会话并保留旧文件。关闭命令行窗口停止本机服务。也可运行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/start_viewer.ps1
 ```
 
-该示例使用真实 Gmsh/CalculiX 悬臂梁参考结果。它演示一次几何改型，不是实物产品认证。机器人参考结果独立保存在开发验证目录中。
+可选运行 quickstart 后导入真实参考结果；空会话没有分析结论。示例结果不是实物产品认证。
 
 ## 连接 Agent 的实际迭代
 

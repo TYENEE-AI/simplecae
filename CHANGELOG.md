@@ -1,3 +1,18 @@
+# Unreleased — local installation and first-use fixes
+
+- Reuse compatible runtimes and configured solvers; default setup installs only
+  runtime dependencies. Windows `-Locked` retains maintainer reproducibility.
+- Viewer opens without an implicit reference solve. First-use examples and full
+  test/release suites are optional; direct Python invocation avoids shell activation.
+- License audits tolerate line-ending conversion while rejecting content changes.
+
+- Ordinary installation no longer requires release/development receipts or repeated
+  source/copy SHA-256 comparisons. Release auditing is explicit (`--verify-release`).
+  `--development` remains accepted without a receipt; installation does not claim
+  release qualification. Runtime, solver files and user outputs remain untouched.
+- Include both `Open_Viewer.cmd` and the Chinese-named Viewer launcher when present.
+  Required files, path containment, backups and solver-download integrity remain.
+
 # 1.6.0 — use-driven checks, portable Agent workflows and measured resources
 
 - Task preparation, selected numerical checks, external evidence and CAD revision

@@ -7,6 +7,11 @@ import json
 import re
 
 
+def notice_text_hash(data):
+    """Normalize line endings only; preserve every other byte of the notice."""
+    return hashlib.sha256(data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')).hexdigest()
+
+
 def collect(root):
     inventory_path=root/'licenses/dependency-inventory.json'
     old=json.loads(inventory_path.read_text(encoding='utf-8')) if inventory_path.exists() else {'dependencies':[]}
@@ -25,7 +30,8 @@ def collect(root):
             data=source.read_bytes();(root/target).parent.mkdir(parents=True,exist_ok=True)
             (root/target).write_bytes(data)
             notices.append({'installed_relative_path':str(entry).replace('\\','/'),
-                            'notice_path':target.as_posix(),'sha256':hashlib.sha256(data).hexdigest()})
+                            'notice_path':target.as_posix(),'sha256':hashlib.sha256(data).hexdigest(),
+                            'text_sha256_lf':notice_text_hash(data)})
         if not notices:raise ValueError(f'{name}: no installed license/notice found; review manually')
         fields=dist.metadata
         records.append({'name':name,'version':version,'license_expression':fields.get('License-Expression'),
@@ -53,12 +59,15 @@ def check(root):
         for item in record['notices']:
             path=(root/item['notice_path']).resolve()
             if not path.is_relative_to((root/'licenses').resolve()):raise ValueError('notice escapes license directory')
-            if hashlib.sha256(path.read_bytes()).hexdigest()!=item['sha256']:raise ValueError('changed dependency notice')
+            data=path.read_bytes()
+            if hashlib.sha256(data).hexdigest()!=item['sha256'] and (
+                    not item.get('text_sha256_lf') or notice_text_hash(data)!=item['text_sha256_lf']):
+                raise ValueError('changed dependency notice')
             count+=1
     if 'GNU GENERAL PUBLIC LICENSE' not in (root/'LICENSE').read_text(encoding='utf-8'):raise ValueError('missing full project license')
     return {'passed':True,'locked_distributions':len(actual),'notice_files':count,
             'project_license':'GPL-3.0-or-later','dependency_code_bundled':False,
-            'scope':'Notice completeness and hashes; not a legal opinion or clearance of third-party binary redistribution.'}
+            'scope':'Notice completeness and content hashes (line-ending changes permitted); not a legal opinion or clearance of third-party binary redistribution.'}
 
 
 def main():

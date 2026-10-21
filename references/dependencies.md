@@ -1,6 +1,6 @@
 # Runtime, provenance and third-party dependencies
 
-SimpleCAE-authored code/docs/examples use GPL-3.0-or-later. [NOTICE](../NOTICE.md) defines the source-only boundary. [The exact inventory](../licenses/dependency-inventory.json) and verbatim notices cover every package in the Windows Python lock, including transitive/test dependencies; `scripts/audit_dependencies.py` checks completeness and hashes. License metadata is retained verbatim, including composite wheel notices. Ubuntu resolves the dependency ranges in `pyproject.toml`; its installed versions and upstream notices remain in that environment. The Windows inventory must not be described as an exact lock for every platform. External CalculiX is obtained separately, not relicensed/bundled.
+SimpleCAE-authored code/docs/examples use GPL-3.0-or-later. [NOTICE](../NOTICE.md) defines the source-only boundary. [The exact inventory](../licenses/dependency-inventory.json) and verbatim notices cover every package in the Windows Python lock, including transitive/test dependencies; `scripts/audit_dependencies.py` is a maintainer check of completeness and notice content; it tolerates line-ending conversion, not changed license text. License metadata is retained verbatim, including composite wheel notices. Ubuntu resolves the dependency ranges in `pyproject.toml`; its installed versions and upstream notices remain in that environment. The Windows inventory must not be described as an exact lock for every platform. External CalculiX is obtained separately, not relicensed/bundled.
 
 Core analysis uses Gmsh 4.15.2 (GPL v2 or later), external CalculiX 2.23 (distribution includes GPL v2 text), NumPy/SciPy (BSD-family notices), Matplotlib (Matplotlib/PSF license), trimesh and meshio (MIT), defusedxml (PSF), jsonschema (MIT), and Manifold 3.5.4 (Apache-2.0). Exact resolved versions, including transitive packages, are in `requirements-lock.txt`; installed packages retain their upstream license files. Manifold is used only to check body penetration for mixed-mesh assemblies. Interface projection/integration and all solver orchestration are independently implemented here.
 
@@ -21,7 +21,7 @@ Showcase CAD uses SimpleCADAPI2.2.4; the earlier SDK fixtures retain their origi
 provenance. No CAD SDK is needed to analyze the saved STEP inputs.
 
 Installation is local to the skill folder: Windows
-`powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1 [-Python PATH] [-Ccx PATH]`;
+`powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1 [-Python PATH] [-Ccx PATH] [-Locked]`;
 Ubuntu `bash scripts/bootstrap.sh [--python PATH] [--ccx PATH]`.
 The latter uses separate `.venv-linux`, preserves platform-specific solver settings,
 and reports missing native dependencies without modifying system packages.
@@ -31,3 +31,8 @@ Source archives supply skill instructions, examples and verification scripts,
 not a runtime or solver executable. Wheels include toolkit resources and support
 `python -m simplecae`, including subprocess workers; a wheel alone does not install
 a host's `SKILL.md` directory. Keep the source skill intact for Agent discovery.
+
+Ordinary bootstrap installs runtime dependencies within pyproject bounds, reuses a
+compatible local environment and configured solver, and does not install tests.
+Windows `-Locked` opts into the archived full dependency lock for maintainers.
+A ready environment needs no network or system Python rediscovery.

@@ -1,0 +1,37 @@
+{
+  "scope": "Installation and first-use maintenance of 1.6.0; not full release requalification",
+  "analysis_modules_changed": false,
+  "physics_thresholds_changed": false,
+  "tests": {
+    "related_regression_distinct_passed": 81,
+    "skipped": 2,
+    "skipped_reason": "Windows symlink creation privilege unavailable",
+    "deepseek_checkout_public_preview_passed": 29
+  },
+  "runtime_checks": [
+    "existing Windows runtime reuse with pip network disabled",
+    "DeepSeek runtime reuse with no system Python",
+    "real one-example Gmsh/CalculiX quickstart",
+    "default compact storage",
+    "empty Viewer HTTP and existing result import",
+    "63 dependency notices content check",
+    "Ubuntu bootstrap syntax"
+  ],
+  "not_retested": [
+    "full physics release suites",
+    "fresh network dependency install",
+    "native Ubuntu installation"
+  ],
+  "historical_receipt": "history/1.6.0-original-public-release.json",
+  "release_qualified": false,
+  "published_by_agent": false,
+  "upload_directory_checks": {
+    "fresh_source_copy_install": true,
+    "managed_files_copied": 507,
+    "regression_passed": 35,
+    "skipped": 2,
+    "notice_content_check": true,
+    "source_privacy_scan": true,
+    "git_diff_check": true
+  }
+}

@@ -9,12 +9,18 @@ Start with how the user will use the object and what could impair that use. Sele
 
 Use the same task workspace for selected FEM and numerical calculations, geometry
 records, missing information and physical follow-up. Read only the method needed
-for the current decision from the table below. First use:
-`quickstart --out FRESH_DIRECTORY --example all` demonstrates pass, failure,
-missing-strength evidence and a same-task geometry iteration. Installation is in
+for the current decision from the table below. With a working runtime, proceed
+directly to the user task. An optional `quickstart --out FRESH_DIRECTORY` checks one
+real solver example; `--example all` is only for learning the other outcomes and
+iteration. Reuse existing example results. Do not run full pytest, license audits,
+release verification or resource calibration as routine installation prerequisites.
+Opening Viewer does not require a reference solve. Installation is in
 [README](README.md); [feedback template](assets/feedback-template.md) collects
-reproducible issues without automatic upload. Public release archives carry a
-source-bound verification receipt; later edits require fresh qualification.
+reproducible issues without automatic upload. Ordinary installation does not require
+a release receipt or source SHA-256 checks. Do not block installation to regenerate
+receipts, compare GitHub raw files or rerun release suites. Release qualification is
+a separate maintainer action (`install_local.py --verify-release`); installing a
+checkout does not certify it as a qualified release.
 
 For a smaller flat bearing pad against a larger flat CAD face, read [contained planar contact](references/contained-planar-contact.md). It requires exact trimmed-face CAD coverage and actual quadratic-mesh projection; it does not support arbitrary partial overlap, cylindrical bore contact or anchor pullout. Curved planar bolt ports preserve the CAD resultant centroid. Keep omitted fastener shear/bearing and clearance applicability separate from axial bolt evidence.
 

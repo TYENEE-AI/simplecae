@@ -77,6 +77,14 @@ they are installation checks, not the main product examples.
 
 ## Install the runtime
 
+This checkout includes first-use maintenance fixes on top of 1.6.0. See
+[validation scope](validation/README.md); the archived release receipt belongs
+to the earlier snapshot and is not an installation prerequisite.
+
+For host skill discovery, first follow “Connect your Agent” below, then run setup
+inside the installed folder. Create the runtime once. Agents using this source
+folder directly do not need an additional installed copy.
+
 Use a writable source folder and **64-bit Python 3.11+**; Python 3.11 is the
 recommended common baseline. Initial dependency downloads need network access.
 Run commands from this folder.
@@ -85,15 +93,18 @@ Run commands from this folder.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap.ps1
-.\.venv\Scripts\Activate.ps1
-simplecae --version
-simplecae quickstart --example all --out outputs/first-001
+.\.venv\Scripts\python.exe scripts/simplecae_cli.py --version
+# Optional: one real solver example
+.\.venv\Scripts\python.exe scripts/simplecae_cli.py quickstart --out outputs/first-001
 ```
 
-If activation is restricted, substitute
-`.\.venv\Scripts\python.exe scripts/simplecae_cli.py` for `simplecae`.
-Bootstrap uses locked Python dependencies and a SHA-256-checked CalculiX2.23
-distribution. Supply `-Python PATH` or `-Ccx PATH` to use an existing interpreter/solver.
+No shell activation is required. Bootstrap reuses a compatible local runtime and
+configured solver; otherwise it installs runtime dependencies within the declared
+version bounds. Tests are not an installation prerequisite. `-Locked` is an optional
+Windows maintainer setup for the full test dependency lock. A newly downloaded
+CalculiX archive is checked before extraction. Supply `-Python PATH` or `-Ccx PATH`
+to select a full Python (including venv/ensurepip) or solver; stripped Agent Python
+runtimes may not support environment creation.
 
 **Ubuntu / bash**
 
@@ -103,9 +114,9 @@ Install prerequisites with your normal package-management permissions:
 sudo apt-get update
 sudo apt-get install python3-venv calculix-ccx libglu1-mesa libxft2 libxcursor1 libxinerama1 libgomp1
 bash scripts/bootstrap.sh
-source .venv-linux/bin/activate
-simplecae --version
-simplecae quickstart --example all --out outputs/first-001
+.venv-linux/bin/python scripts/simplecae_cli.py --version
+# Optional: one real solver example
+.venv-linux/bin/python scripts/simplecae_cli.py quickstart --out outputs/first-001
 ```
 
 The selected Python must be >=3.11; use `--python /path/to/python3.11` if needed.
@@ -114,6 +125,12 @@ or modify system packages. Linux uses separate `.venv-linux` and preserves
 Windows solver settings in shared folders. Ubuntu dependencies resolve within
 declared version bounds; record `doctor` output for reproduction.
 
+An existing healthy environment can go straight to the user task. `quickstart
+--example all`, pytest, dependency audits and release verification are optional
+learning/maintainer workflows, not mandatory first-use steps. Reuse an existing
+quickstart result rather than rerunning it; use a fresh output directory when a
+new solve is actually needed. Opening Viewer alone starts no solve.
+
 Installed environments can also call `python -m simplecae`. A wheel contains
 runtime assets/examples; the **source folder** is the installable Agent skill.
 [Dependency details](references/dependencies.md).
@@ -121,12 +138,17 @@ runtime assets/examples; the **source folder** is the installable Agent skill.
 ## Connect your Agent
 
 Start with **“Read this folder's SKILL.md and use SimpleCAE.”** For discovery,
-preview the destination and install the qualified source:
+install the source folder (destination preview is optional):
 
 ```text
 python scripts/install_local.py --agent codex --show-target
 python scripts/install_local.py --agent codex
 ```
+
+Ordinary installation needs no release receipt or source SHA-256 comparison.
+Missing/stale receipts do not block it. `--verify-release` is an optional maintainer
+audit, not a first-use step. `--development` also works without a receipt.
+Solver download integrity and analysis validity checks remain enabled.
 
 | Host | Flag | Default discovery root |
 |---|---|---|

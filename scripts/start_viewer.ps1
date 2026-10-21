@@ -11,13 +11,14 @@ if (-not (Test-Path -LiteralPath (Join-Path $Session 'viewer.json'))) {
     if ($PSBoundParameters.ContainsKey('Session')) { throw "Viewer session not found: $Session. Create one with: simplecae view RESULT.json --out SESSION" }
     $ViewerExample = Join-Path $ToolkitRoot 'outputs/first-001'
     $ViewerResult = Join-Path $ViewerExample 'pass/result.json'
-    if (-not (Test-Path -LiteralPath $ViewerResult)) {
-        if (Test-Path -LiteralPath $ViewerExample) { throw 'The first Viewer example is incomplete. Retain it for diagnosis and choose a fresh quickstart output.' }
-        Write-Host 'Preparing the first STEP reference (3 mesh levels). This is a mathematical example, not a product rating.'
-        & $ToolkitPython (Join-Path $PSScriptRoot 'simplecae_cli.py') quickstart --out $ViewerExample
-        if ($LASTEXITCODE -ne 0) { throw 'First example failed; inspect the retained output and bootstrap environment.' }
+    # Opening a review surface must not implicitly start a solver or overwrite an incomplete run.
+    if (Test-Path -LiteralPath $Session) { $Session = $Session + '-' + [guid]::NewGuid().ToString('N').Substring(0,8) }
+    if (Test-Path -LiteralPath $ViewerResult) {
+        & $ToolkitPython (Join-Path $PSScriptRoot 'simplecae_cli.py') view $ViewerResult --out $Session
+    } else {
+        Write-Host 'Opening an empty review session. Add an analysis result when ready; no solver is started.'
+        & $ToolkitPython (Join-Path $PSScriptRoot 'simplecae_cli.py') view --out $Session
     }
-    & $ToolkitPython (Join-Path $PSScriptRoot 'simplecae_cli.py') view $ViewerResult --out $Session
     if ($LASTEXITCODE -ne 0) { throw 'Viewer session creation failed.' }
 }
 & $ToolkitPython (Join-Path $PSScriptRoot 'simplecae_cli.py') view --session $Session --serve --open --port $Port

@@ -18,7 +18,8 @@
         {
           "installed_relative_path": "attrs-26.1.0.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/attrs/00-LICENSE",
-          "sha256": "882115c95dfc2af1eeb6714f8ec6d5cbcabf667caff8729f42420da63f714e9f"
+          "sha256": "882115c95dfc2af1eeb6714f8ec6d5cbcabf667caff8729f42420da63f714e9f",
+          "text_sha256_lf": "882115c95dfc2af1eeb6714f8ec6d5cbcabf667caff8729f42420da63f714e9f"
         }
       ]
     },
@@ -37,7 +38,8 @@
         {
           "installed_relative_path": "colorama-0.4.6.dist-info/licenses/LICENSE.txt",
           "notice_path": "licenses/dependencies/colorama/00-LICENSE.txt",
-          "sha256": "cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318"
+          "sha256": "cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318",
+          "text_sha256_lf": "cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318"
         }
       ]
     },
@@ -59,7 +61,8 @@
         {
           "installed_relative_path": "contourpy-1.3.3.dist-info/LICENSE",
           "notice_path": "licenses/dependencies/contourpy/00-LICENSE",
-          "sha256": "8553102e03001dd966278098cc027d0683c412b34ea141351b060be4330f39a9"
+          "sha256": "8553102e03001dd966278098cc027d0683c412b34ea141351b060be4330f39a9",
+          "text_sha256_lf": "34170979fc64f4f5e6dfa66ef27dec314ffffc5852000c60f4836ec1dfbf156e"
         }
       ]
     },
@@ -79,7 +82,8 @@
         {
           "installed_relative_path": "cycler-0.12.1.dist-info/LICENSE",
           "notice_path": "licenses/dependencies/cycler/00-LICENSE",
-          "sha256": "f1218143d766da3fea66f13396b7f15df46a83303f29bf96ba6e98eb4d42f408"
+          "sha256": "f1218143d766da3fea66f13396b7f15df46a83303f29bf96ba6e98eb4d42f408",
+          "text_sha256_lf": "f1218143d766da3fea66f13396b7f15df46a83303f29bf96ba6e98eb4d42f408"
         }
       ]
     },
@@ -96,7 +100,8 @@
         {
           "installed_relative_path": "defusedxml-0.7.1.dist-info/LICENSE",
           "notice_path": "licenses/dependencies/defusedxml/00-LICENSE",
-          "sha256": "b80ce9da8c42a1f91079627fbbe2bf27210ae108a0ffe5f077d5b08e076c24c8"
+          "sha256": "b80ce9da8c42a1f91079627fbbe2bf27210ae108a0ffe5f077d5b08e076c24c8",
+          "text_sha256_lf": "b80ce9da8c42a1f91079627fbbe2bf27210ae108a0ffe5f077d5b08e076c24c8"
         }
       ]
     },
@@ -111,12 +116,14 @@
         {
           "installed_relative_path": "fonttools-4.66.1.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/fonttools/00-LICENSE",
-          "sha256": "22bef80697ecfaa17f97e62b9a26dfa12820be05583e8dd12ad169b241274c99"
+          "sha256": "22bef80697ecfaa17f97e62b9a26dfa12820be05583e8dd12ad169b241274c99",
+          "text_sha256_lf": "6787208f83f659ccbc2223b2fde952ffa6f7e8aca62f1a8a2bf5bc51bb1b2383"
         },
         {
           "installed_relative_path": "fonttools-4.66.1.dist-info/licenses/LICENSE.external",
           "notice_path": "licenses/dependencies/fonttools/01-LICENSE.external",
-          "sha256": "b082a5f86775b2641f01bccb8b9c82908481de5f502bb254b1e13bfc2a9f303d"
+          "sha256": "b082a5f86775b2641f01bccb8b9c82908481de5f502bb254b1e13bfc2a9f303d",
+          "text_sha256_lf": "94a83aaee0729a0f302d34acc4acecbd9d58366f262429075fe557e4a54b2e69"
         }
       ]
     },
@@ -133,7 +140,8 @@
         {
           "installed_relative_path": "../../share/doc/gmsh/LICENSE.txt",
           "notice_path": "licenses/dependencies/gmsh/00-LICENSE.txt",
-          "sha256": "7fefa67a6c607068a33ba27e0a18aaf8596aa051f7cf2abcca094a3a484c5870"
+          "sha256": "7fefa67a6c607068a33ba27e0a18aaf8596aa051f7cf2abcca094a3a484c5870",
+          "text_sha256_lf": "32085d8c954e2e22dc667c089f360049e8f1af955f946fb0a18f29d70390276a"
         }
       ]
     },
@@ -150,7 +158,8 @@
         {
           "installed_relative_path": "iniconfig-2.3.1.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/iniconfig/00-LICENSE",
-          "sha256": "3409fa91f7ace557894632676656e32264fe5ef7581535725dc9a23774551bd4"
+          "sha256": "3409fa91f7ace557894632676656e32264fe5ef7581535725dc9a23774551bd4",
+          "text_sha256_lf": "3409fa91f7ace557894632676656e32264fe5ef7581535725dc9a23774551bd4"
         }
       ]
     },
@@ -173,7 +182,8 @@
         {
           "installed_relative_path": "jsonschema-4.26.0.dist-info/licenses/COPYING",
           "notice_path": "licenses/dependencies/jsonschema/00-COPYING",
-          "sha256": "4f92a015a13c4d1a040bef018aa13430b4f1bc73b41b16bb846c346766de7439"
+          "sha256": "4f92a015a13c4d1a040bef018aa13430b4f1bc73b41b16bb846c346766de7439",
+          "text_sha256_lf": "4f92a015a13c4d1a040bef018aa13430b4f1bc73b41b16bb846c346766de7439"
         }
       ]
     },
@@ -195,7 +205,8 @@
         {
           "installed_relative_path": "jsonschema_specifications-2025.9.1.dist-info/licenses/COPYING",
           "notice_path": "licenses/dependencies/jsonschema-specifications/00-COPYING",
-          "sha256": "42dcd63495f87b4eb7c7757afa379bb55a53f94afd7a5f657d9adf57236e515c"
+          "sha256": "42dcd63495f87b4eb7c7757afa379bb55a53f94afd7a5f657d9adf57236e515c",
+          "text_sha256_lf": "42dcd63495f87b4eb7c7757afa379bb55a53f94afd7a5f657d9adf57236e515c"
         }
       ]
     },
@@ -217,7 +228,8 @@
         {
           "installed_relative_path": "kiwisolver-1.5.1.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/kiwisolver/00-LICENSE",
-          "sha256": "b24c2bf6185f31a124ad6bacccae3071bdc7ad7882de00b00110aa62abb76a15"
+          "sha256": "b24c2bf6185f31a124ad6bacccae3071bdc7ad7882de00b00110aa62abb76a15",
+          "text_sha256_lf": "529c40e5f67f2f88904657a9f7879ae2f8dc76bc9bfef9cb10d988b48804ed61"
         }
       ]
     },
@@ -237,12 +249,14 @@
         {
           "installed_relative_path": "markdown_it_py-4.2.0.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/markdown-it-py/00-LICENSE",
-          "sha256": "4a2260d6e2cd0f5a151a1e86dbfe7d3ed552b1e2beabf9941c1ba5c49cbce484"
+          "sha256": "4a2260d6e2cd0f5a151a1e86dbfe7d3ed552b1e2beabf9941c1ba5c49cbce484",
+          "text_sha256_lf": "4a2260d6e2cd0f5a151a1e86dbfe7d3ed552b1e2beabf9941c1ba5c49cbce484"
         },
         {
           "installed_relative_path": "markdown_it_py-4.2.0.dist-info/licenses/LICENSE.markdown-it",
           "notice_path": "licenses/dependencies/markdown-it-py/01-LICENSE.markdown-it",
-          "sha256": "792c48c5a849a15fdf9e37e8bcf9e6d1dd13b32b46c642a748a0a46a9919d473"
+          "sha256": "792c48c5a849a15fdf9e37e8bcf9e6d1dd13b32b46c642a748a0a46a9919d473",
+          "text_sha256_lf": "792c48c5a849a15fdf9e37e8bcf9e6d1dd13b32b46c642a748a0a46a9919d473"
         }
       ]
     },
@@ -262,12 +276,14 @@
         {
           "installed_relative_path": "manifold3d-3.5.4.dist-info/licenses/AUTHORS",
           "notice_path": "licenses/dependencies/manifold3d/00-AUTHORS",
-          "sha256": "9e6e21c75344afd433233c5162511fed9891726f45274c535adfedbb39e43bc8"
+          "sha256": "9e6e21c75344afd433233c5162511fed9891726f45274c535adfedbb39e43bc8",
+          "text_sha256_lf": "074a43d4b1626a34a0a14a036d00100524dd463604b2570c4d76c7baa63608f3"
         },
         {
           "installed_relative_path": "manifold3d-3.5.4.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/manifold3d/01-LICENSE",
-          "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"
+          "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+          "text_sha256_lf": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
         }
       ]
     },
@@ -292,17 +308,20 @@
         {
           "installed_relative_path": "matplotlib-3.11.2.dist-info/LICENSE",
           "notice_path": "licenses/dependencies/matplotlib/00-LICENSE",
-          "sha256": "822e8e528147569a41975592aee19c11992ab667ba50451cd929031d5fc74491"
+          "sha256": "822e8e528147569a41975592aee19c11992ab667ba50451cd929031d5fc74491",
+          "text_sha256_lf": "822e8e528147569a41975592aee19c11992ab667ba50451cd929031d5fc74491"
         },
         {
           "installed_relative_path": "matplotlib/mpl-data/fonts/ttf/LICENSE_DEJAVU",
           "notice_path": "licenses/dependencies/matplotlib/01-LICENSE_DEJAVU",
-          "sha256": "d75938dec098f06f0ac3c00853065d94f020be1c3c62ef1dc2975ba15b4d9b0e"
+          "sha256": "d75938dec098f06f0ac3c00853065d94f020be1c3c62ef1dc2975ba15b4d9b0e",
+          "text_sha256_lf": "d75938dec098f06f0ac3c00853065d94f020be1c3c62ef1dc2975ba15b4d9b0e"
         },
         {
           "installed_relative_path": "matplotlib/mpl-data/fonts/ttf/LICENSE_STIX",
           "notice_path": "licenses/dependencies/matplotlib/02-LICENSE_STIX",
-          "sha256": "bab3d31dfef07f483624f2f65f2711e76065b8e7273278b1c071ede1041c9959"
+          "sha256": "bab3d31dfef07f483624f2f65f2711e76065b8e7273278b1c071ede1041c9959",
+          "text_sha256_lf": "bab3d31dfef07f483624f2f65f2711e76065b8e7273278b1c071ede1041c9959"
         }
       ]
     },
@@ -321,7 +340,8 @@
         {
           "installed_relative_path": "mdurl-0.1.2.dist-info/LICENSE",
           "notice_path": "licenses/dependencies/mdurl/00-LICENSE",
-          "sha256": "7c605df6e28667a9603118e98274f64a49ce3eed0d26fccce9534a345e0ef955"
+          "sha256": "7c605df6e28667a9603118e98274f64a49ce3eed0d26fccce9534a345e0ef955",
+          "text_sha256_lf": "7c605df6e28667a9603118e98274f64a49ce3eed0d26fccce9534a345e0ef955"
         }
       ]
     },
@@ -342,7 +362,8 @@
         {
           "installed_relative_path": "meshio-5.3.5.dist-info/LICENSE.txt",
           "notice_path": "licenses/dependencies/meshio/00-LICENSE.txt",
-          "sha256": "3152e464fdd307cac91bf9668c66f86cb8e02cd40d5b48a8da1a241ae1264e79"
+          "sha256": "3152e464fdd307cac91bf9668c66f86cb8e02cd40d5b48a8da1a241ae1264e79",
+          "text_sha256_lf": "3152e464fdd307cac91bf9668c66f86cb8e02cd40d5b48a8da1a241ae1264e79"
         }
       ]
     },
@@ -364,102 +385,122 @@
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/LICENSE.txt",
           "notice_path": "licenses/dependencies/numpy/00-LICENSE.txt",
-          "sha256": "a804dff0ead9fadc5293456410bcbfc32bf024be9c4513459663fb7b442d2341"
+          "sha256": "a804dff0ead9fadc5293456410bcbfc32bf024be9c4513459663fb7b442d2341",
+          "text_sha256_lf": "dc97d59562c75c04557f1e9a68f3eae326699eb119d569cd4ed6a4eafe5f9abb"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt",
           "notice_path": "licenses/dependencies/numpy/01-LICENSE.txt",
-          "sha256": "d544761558b510866c21f7e8a2d5716fca76e0b98117e3b6b86314db7244d150"
+          "sha256": "d544761558b510866c21f7e8a2d5716fca76e0b98117e3b6b86314db7244d150",
+          "text_sha256_lf": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING",
           "notice_path": "licenses/dependencies/numpy/02-COPYING",
-          "sha256": "aea41976c720f91bd19725c16916a1ace40eb1ea42620d340e587a5de4bbcea0"
+          "sha256": "aea41976c720f91bd19725c16916a1ace40eb1ea42620d340e587a5de4bbcea0",
+          "text_sha256_lf": "3f2c1ffa76383a55ae0aac01c9737cd70050dff63e1f026694fbe9d662573c98"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/_core/src/highway/LICENSE",
           "notice_path": "licenses/dependencies/numpy/03-LICENSE",
-          "sha256": "d208152e2777ffd0126eacc1bd21c0320d69e4e6b622d21a2a12a47e8ef73763"
+          "sha256": "d208152e2777ffd0126eacc1bd21c0320d69e4e6b622d21a2a12a47e8ef73763",
+          "text_sha256_lf": "e340270d4f64384569a91d546acb5b094d69ce47f0c015db77abb74dc6f815af"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/_core/src/multiarray/dragon4_LICENSE.txt",
           "notice_path": "licenses/dependencies/numpy/04-dragon4_LICENSE.txt",
-          "sha256": "b0fd592d4ead563148e3977e7b589169d46a5ef2ff133c755a81af880a3fc919"
+          "sha256": "b0fd592d4ead563148e3977e7b589169d46a5ef2ff133c755a81af880a3fc919",
+          "text_sha256_lf": "f7b14309e5f54e5022b26448eefd419988ada2aec01d3c1162d84a0ea8f21f2c"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md",
           "notice_path": "licenses/dependencies/numpy/05-LICENSE.md",
-          "sha256": "a732977853530066790c42817087f4829b518dd98d340c916acbfd227e39d3cb"
+          "sha256": "a732977853530066790c42817087f4829b518dd98d340c916acbfd227e39d3cb",
+          "text_sha256_lf": "211e7d737d6179a08f791ebb0a99897ce7cd2457410c542876d125576edfe910"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/_core/src/umath/svml/LICENSE",
           "notice_path": "licenses/dependencies/numpy/06-LICENSE",
-          "sha256": "585483905b13d4b42f800c55ba99e89d6e2e33ccd5f503e201c07531d148ff41"
+          "sha256": "585483905b13d4b42f800c55ba99e89d6e2e33ccd5f503e201c07531d148ff41",
+          "text_sha256_lf": "c17011467b4fe6e20fbfbeda4df09e58c2bca5480a063e55735a4000a379aad9"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/fft/pocketfft/LICENSE.md",
           "notice_path": "licenses/dependencies/numpy/07-LICENSE.md",
-          "sha256": "8db000e158c162e7249787852d8c69764706502ccee725c06641b31c1e95c8af"
+          "sha256": "8db000e158c162e7249787852d8c69764706502ccee725c06641b31c1e95c8af",
+          "text_sha256_lf": "a85ca13fdf90160b64a0698215868c13b74d835ad0a4e2ba44713b8c5058a056"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/linalg/lapack_lite/LICENSE.txt",
           "notice_path": "licenses/dependencies/numpy/08-LICENSE.txt",
-          "sha256": "19060ef465e1797d682ee0fc3081bd25ab1395e995e43d25c9d13c95d9a3cd6b"
+          "sha256": "19060ef465e1797d682ee0fc3081bd25ab1395e995e43d25c9d13c95d9a3cd6b",
+          "text_sha256_lf": "a14cc25e10d40a3aa705b7de2fb764a6535d8ee9b2db4e1724900585457dfd55"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/ma/LICENSE",
           "notice_path": "licenses/dependencies/numpy/09-LICENSE",
-          "sha256": "d78dbb208b80d92b4d333e41a4baae50d12444f46e53199fa7726a91de6e2da7"
+          "sha256": "d78dbb208b80d92b4d333e41a4baae50d12444f46e53199fa7726a91de6e2da7",
+          "text_sha256_lf": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/random/LICENSE.md",
           "notice_path": "licenses/dependencies/numpy/10-LICENSE.md",
-          "sha256": "b4bc2f4fa1c95778f1ed3dd8f14706bece399475b978f9f34b5d3cd72521b48a"
+          "sha256": "b4bc2f4fa1c95778f1ed3dd8f14706bece399475b978f9f34b5d3cd72521b48a",
+          "text_sha256_lf": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/random/src/distributions/LICENSE.md",
           "notice_path": "licenses/dependencies/numpy/11-LICENSE.md",
-          "sha256": "cf5619f25b112d5ce7c896efffc8e610bcb345dfadcc19f2c1460aa48fff2c9e"
+          "sha256": "cf5619f25b112d5ce7c896efffc8e610bcb345dfadcc19f2c1460aa48fff2c9e",
+          "text_sha256_lf": "469778be8f33d54e1bcaab28c281cc472916d2d273f835e55bc487d30503face"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/random/src/mt19937/LICENSE.md",
           "notice_path": "licenses/dependencies/numpy/12-LICENSE.md",
-          "sha256": "92c10699884321f1c2947fe2a70ab23b0fbf1507f756d89dd08f38c61fc3d4fa"
+          "sha256": "92c10699884321f1c2947fe2a70ab23b0fbf1507f756d89dd08f38c61fc3d4fa",
+          "text_sha256_lf": "0e111337b25494a773106695f0e799f642b8567aaacca4f116a74a8177179156"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/random/src/pcg64/LICENSE.md",
           "notice_path": "licenses/dependencies/numpy/13-LICENSE.md",
-          "sha256": "41190663b77bee5302386495a07b7eabfbfa571aa0ae2f11da6764162062fc4f"
+          "sha256": "41190663b77bee5302386495a07b7eabfbfa571aa0ae2f11da6764162062fc4f",
+          "text_sha256_lf": "e7d4f4fb20358f314210a892ae17351e04993813646f697ec387385ca2a36918"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/random/src/philox/LICENSE.md",
           "notice_path": "licenses/dependencies/numpy/14-LICENSE.md",
-          "sha256": "322ac46d870c8aeead6c53adcccc839296fb3c8e456eae155081297daf7f8013"
+          "sha256": "322ac46d870c8aeead6c53adcccc839296fb3c8e456eae155081297daf7f8013",
+          "text_sha256_lf": "6f5828a57223d4cc7f8ea505a2623e7b978b242752c1515e355f46ba2cec1800"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/random/src/sfc64/LICENSE.md",
           "notice_path": "licenses/dependencies/numpy/15-LICENSE.md",
-          "sha256": "28cad82ce1379dc529df30da78ec012d7d0d1d576b03ddcb93388aee53659f59"
+          "sha256": "28cad82ce1379dc529df30da78ec012d7d0d1d576b03ddcb93388aee53659f59",
+          "text_sha256_lf": "9d4098846018319cd68e228ee6220361787f73bccbf00237a85e4fc9621b998f"
         },
         {
           "installed_relative_path": "numpy-2.4.6.dist-info/licenses/numpy/random/src/splitmix64/LICENSE.md",
           "notice_path": "licenses/dependencies/numpy/16-LICENSE.md",
-          "sha256": "454ec7350e478e037061850b67395753b425b1cb0a34bbc26290b020bf89d763"
+          "sha256": "454ec7350e478e037061850b67395753b425b1cb0a34bbc26290b020bf89d763",
+          "text_sha256_lf": "268b0ca06759d31ea3ca68dd35f20e877916e927b1c2a835e4592a3c4354b1f9"
         },
         {
           "installed_relative_path": "numpy/_core/include/numpy/random/LICENSE.txt",
           "notice_path": "licenses/dependencies/numpy/17-LICENSE.txt",
-          "sha256": "d544761558b510866c21f7e8a2d5716fca76e0b98117e3b6b86314db7244d150"
+          "sha256": "d544761558b510866c21f7e8a2d5716fca76e0b98117e3b6b86314db7244d150",
+          "text_sha256_lf": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec"
         },
         {
           "installed_relative_path": "numpy/ma/LICENSE",
           "notice_path": "licenses/dependencies/numpy/18-LICENSE",
-          "sha256": "d78dbb208b80d92b4d333e41a4baae50d12444f46e53199fa7726a91de6e2da7"
+          "sha256": "d78dbb208b80d92b4d333e41a4baae50d12444f46e53199fa7726a91de6e2da7",
+          "text_sha256_lf": "05f3b88351988ecfad10abe92c0c50e5875c6452d5009a0084cc291551ffcca6"
         },
         {
           "installed_relative_path": "numpy/random/LICENSE.md",
           "notice_path": "licenses/dependencies/numpy/19-LICENSE.md",
-          "sha256": "b4bc2f4fa1c95778f1ed3dd8f14706bece399475b978f9f34b5d3cd72521b48a"
+          "sha256": "b4bc2f4fa1c95778f1ed3dd8f14706bece399475b978f9f34b5d3cd72521b48a",
+          "text_sha256_lf": "103166b62b80443afb9eb3488e052ea06be0cff566b908f199e561fde49af19f"
         }
       ]
     },
@@ -477,17 +518,20 @@
         {
           "installed_relative_path": "packaging-26.3.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/packaging/00-LICENSE",
-          "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+          "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48",
+          "text_sha256_lf": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
         },
         {
           "installed_relative_path": "packaging-26.3.dist-info/licenses/LICENSE.APACHE",
           "notice_path": "licenses/dependencies/packaging/01-LICENSE.APACHE",
-          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+          "text_sha256_lf": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
         },
         {
           "installed_relative_path": "packaging-26.3.dist-info/licenses/LICENSE.BSD",
           "notice_path": "licenses/dependencies/packaging/02-LICENSE.BSD",
-          "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+          "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5",
+          "text_sha256_lf": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
         }
       ]
     },
@@ -510,7 +554,8 @@
         {
           "installed_relative_path": "pillow-12.3.0.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/pillow/00-LICENSE",
-          "sha256": "4f7866a74802c6326f81faff59a56546b6aec2b10b91973e0e9308de95e79857"
+          "sha256": "4f7866a74802c6326f81faff59a56546b6aec2b10b91973e0e9308de95e79857",
+          "text_sha256_lf": "51ed379cf673c9676b7fa7e1bedbfc5d4ad63caac4f6f99eeec5ccab50c3e0ef"
         }
       ]
     },
@@ -527,7 +572,8 @@
         {
           "installed_relative_path": "pluggy-1.6.0.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/pluggy/00-LICENSE",
-          "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606"
+          "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606",
+          "text_sha256_lf": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606"
         }
       ]
     },
@@ -548,12 +594,14 @@
         {
           "installed_relative_path": "pygments-2.21.0.dist-info/licenses/AUTHORS",
           "notice_path": "licenses/dependencies/Pygments/00-AUTHORS",
-          "sha256": "71a83872ad82f57be692cf827e048e2cd51d45169cfa1ea3f28706d97a872c0f"
+          "sha256": "71a83872ad82f57be692cf827e048e2cd51d45169cfa1ea3f28706d97a872c0f",
+          "text_sha256_lf": "71a83872ad82f57be692cf827e048e2cd51d45169cfa1ea3f28706d97a872c0f"
         },
         {
           "installed_relative_path": "pygments-2.21.0.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/Pygments/01-LICENSE",
-          "sha256": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17"
+          "sha256": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17",
+          "text_sha256_lf": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17"
         }
       ]
     },
@@ -572,7 +620,8 @@
         {
           "installed_relative_path": "pyparsing-3.3.3.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/pyparsing/00-LICENSE",
-          "sha256": "a5425f9dc14ac74d4c5f0b679e941f2442e32cca7452a4418d5b1a49893ebe4e"
+          "sha256": "a5425f9dc14ac74d4c5f0b679e941f2442e32cca7452a4418d5b1a49893ebe4e",
+          "text_sha256_lf": "a5425f9dc14ac74d4c5f0b679e941f2442e32cca7452a4418d5b1a49893ebe4e"
         }
       ]
     },
@@ -594,7 +643,8 @@
         {
           "installed_relative_path": "pytest-9.1.1.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/pytest/00-LICENSE",
-          "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b"
+          "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b",
+          "text_sha256_lf": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b"
         }
       ]
     },
@@ -615,7 +665,8 @@
         {
           "installed_relative_path": "python_dateutil-2.9.0.post0.dist-info/LICENSE",
           "notice_path": "licenses/dependencies/python-dateutil/00-LICENSE",
-          "sha256": "ba00f51a0d92823b5a1cde27d8b5b9d2321e67ed8da9bc163eff96d5e17e577e"
+          "sha256": "ba00f51a0d92823b5a1cde27d8b5b9d2321e67ed8da9bc163eff96d5e17e577e",
+          "text_sha256_lf": "ba00f51a0d92823b5a1cde27d8b5b9d2321e67ed8da9bc163eff96d5e17e577e"
         }
       ]
     },
@@ -638,7 +689,8 @@
         {
           "installed_relative_path": "pyyaml-6.0.3.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/PyYAML/00-LICENSE",
-          "sha256": "8d3928f9dc4490fd635707cb88eb26bd764102a7282954307d3e5167a577e8a4"
+          "sha256": "8d3928f9dc4490fd635707cb88eb26bd764102a7282954307d3e5167a577e8a4",
+          "text_sha256_lf": "8d3928f9dc4490fd635707cb88eb26bd764102a7282954307d3e5167a577e8a4"
         }
       ]
     },
@@ -661,7 +713,8 @@
         {
           "installed_relative_path": "referencing-0.37.0.dist-info/licenses/COPYING",
           "notice_path": "licenses/dependencies/referencing/00-COPYING",
-          "sha256": "42dcd63495f87b4eb7c7757afa379bb55a53f94afd7a5f657d9adf57236e515c"
+          "sha256": "42dcd63495f87b4eb7c7757afa379bb55a53f94afd7a5f657d9adf57236e515c",
+          "text_sha256_lf": "42dcd63495f87b4eb7c7757afa379bb55a53f94afd7a5f657d9adf57236e515c"
         }
       ]
     },
@@ -681,7 +734,8 @@
         {
           "installed_relative_path": "rich-15.0.0.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/rich/00-LICENSE",
-          "sha256": "deed7c17a4318158190a3ea239cc879a5a50271cebb98ae7025f48fbe58dca15"
+          "sha256": "deed7c17a4318158190a3ea239cc879a5a50271cebb98ae7025f48fbe58dca15",
+          "text_sha256_lf": "deed7c17a4318158190a3ea239cc879a5a50271cebb98ae7025f48fbe58dca15"
         }
       ]
     },
@@ -704,7 +758,8 @@
         {
           "installed_relative_path": "rpds_py-2026.9.1.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/rpds-py/00-LICENSE",
-          "sha256": "8bcb72c82ea8ae74802293c41d93ad7d51434001b0ae45a603a5af0f507aee0a"
+          "sha256": "8bcb72c82ea8ae74802293c41d93ad7d51434001b0ae45a603a5af0f507aee0a",
+          "text_sha256_lf": "314e4e91be3baa93c0fb4bccc9e4e97cd643eb839b065af921782c2175fe9909"
         }
       ]
     },
@@ -727,27 +782,32 @@
         {
           "installed_relative_path": "scipy-1.17.1.dist-info/LICENSE.txt",
           "notice_path": "licenses/dependencies/scipy/00-LICENSE.txt",
-          "sha256": "564d63dbef2ef3eb1dec94908966d3edf5f11c487ee2cf2baf8bf3faef01bdd9"
+          "sha256": "564d63dbef2ef3eb1dec94908966d3edf5f11c487ee2cf2baf8bf3faef01bdd9",
+          "text_sha256_lf": "e6993ffc464425a198e3558f9d76fb888420c42ff0ae95b07a544087754a5995"
         },
         {
           "installed_relative_path": "scipy/_lib/_uarray/LICENSE",
           "notice_path": "licenses/dependencies/scipy/01-LICENSE",
-          "sha256": "e4c4acc31e8287066d7c995d26e3ef902ca1977ee187b260b11c278366503811"
+          "sha256": "e4c4acc31e8287066d7c995d26e3ef902ca1977ee187b260b11c278366503811",
+          "text_sha256_lf": "c80c39b5fce06ba4897e14e0b0a88b54458334d951eb1361402ffad2cfb863b4"
         },
         {
           "installed_relative_path": "scipy/fft/_pocketfft/LICENSE.md",
           "notice_path": "licenses/dependencies/scipy/02-LICENSE.md",
-          "sha256": "c04661685cff9d8035fe1c4c3ab357e7f7633cafc06a73e9d90c3c5fede8a86a"
+          "sha256": "c04661685cff9d8035fe1c4c3ab357e7f7633cafc06a73e9d90c3c5fede8a86a",
+          "text_sha256_lf": "c254b2b5fd30ae3c89d36ba061730563b9760fca04f1b746a1b2c3157da2c789"
         },
         {
           "installed_relative_path": "scipy/integrate/LICENSE_DOP",
           "notice_path": "licenses/dependencies/scipy/03-LICENSE_DOP",
-          "sha256": "6cc2ed6e35b8f376ff3d8f86aeef4e0c34c2309bd6f4a0565936d577839ba023"
+          "sha256": "6cc2ed6e35b8f376ff3d8f86aeef4e0c34c2309bd6f4a0565936d577839ba023",
+          "text_sha256_lf": "ed9bf58c6d74d3fad9d92d1d67d9bff8141d8ab60de784516b0711364fd43357"
         },
         {
           "installed_relative_path": "scipy/spatial/qhull_src/COPYING_QHULL.txt",
           "notice_path": "licenses/dependencies/scipy/04-COPYING_QHULL.txt",
-          "sha256": "2a6ebb495e26dd5f88cbc40c593733da6edb27b64936f70409cd5a1acafb1c32"
+          "sha256": "2a6ebb495e26dd5f88cbc40c593733da6edb27b64936f70409cd5a1acafb1c32",
+          "text_sha256_lf": "106d55c931fd6a84822e5345d900273d059f1c27310d02567ccb313c5d18c55d"
         }
       ]
     },
@@ -764,7 +824,8 @@
         {
           "installed_relative_path": "six-1.17.0.dist-info/LICENSE",
           "notice_path": "licenses/dependencies/six/00-LICENSE",
-          "sha256": "4375ba20e2b9c6c4e7cad2940a628fd90e95cc3d50ee92aae755715d8ba1fbd0"
+          "sha256": "4375ba20e2b9c6c4e7cad2940a628fd90e95cc3d50ee92aae755715d8ba1fbd0",
+          "text_sha256_lf": "4375ba20e2b9c6c4e7cad2940a628fd90e95cc3d50ee92aae755715d8ba1fbd0"
         }
       ]
     },
@@ -784,7 +845,8 @@
         {
           "installed_relative_path": "trimesh-5.1.1.dist-info/licenses/LICENSE.md",
           "notice_path": "licenses/dependencies/trimesh/00-LICENSE.md",
-          "sha256": "fe27b5ef8710676cc85255da28a32f394e2ef3f4ce47075a1c732a9ea1d7bd03"
+          "sha256": "fe27b5ef8710676cc85255da28a32f394e2ef3f4ce47075a1c732a9ea1d7bd03",
+          "text_sha256_lf": "fe27b5ef8710676cc85255da28a32f394e2ef3f4ce47075a1c732a9ea1d7bd03"
         }
       ]
     },
@@ -806,7 +868,8 @@
         {
           "installed_relative_path": "typing_extensions-4.16.0.dist-info/licenses/LICENSE",
           "notice_path": "licenses/dependencies/typing_extensions/00-LICENSE",
-          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+          "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+          "text_sha256_lf": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
         }
       ]
     }
