@@ -3,6 +3,7 @@
 The fixtures prescribe mathematical materials and ideal fixtures. They verify
 the numerical method, not a physical bolted product or a measured friction law.
 """
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from pathlib import Path
 import copy
 import math
@@ -79,7 +80,7 @@ def fixtures(directory):
     return cases
 
 
-def validate_bolt_friction(out,ccx=None,timeout=300):
+def validate_bolt_friction(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=False);inputs=out/'inputs';cases=fixtures(inputs);checks=[];results={}
     def check(name,passed,**kw):checks.append(dict(name=name,passed=bool(passed),**kw))
     for name,case in cases.items():

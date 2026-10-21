@@ -1,5 +1,20 @@
 # 本地 Viewer
 
+在线列表 `/state` 仅返回来源校验后的摘要，不构造所有版本的场；摘要标为
+`fields_loaded=false`，不授予可比较信号。选中版本时 `/run?id=注册ID` 才核验并
+加载该版本的完整显示数据。浏览器只保留当前版本和用户选择的对照版本；切换
+到其他版本会按需重新读取。比较和区域批注只构造所选记录，仍保留原有数值与
+源哈希检查。请求期间证据变化会拒绝本次载入，不能沿用旧值。
+
+切换版本会取消不再需要的浏览器场请求。服务器将连接中断计入 `/index`
+的 `transport.aborted_responses`，不会向同一断开连接再发送错误页，也不会
+因此改变分析结果。失败请求可重新选择版本重试。每文件/解压场保护上限
+提高到 256 MiB；仍拒绝不完整、非有限值或来源变化的数据。
+
+首次小页面加载完成不表示结果已核验。列表、场加载失败与完整判定分别显示；
+未加载或加载失败的记录不能显示为已核验通过。离线 `view --session SESSION`
+仍显式导出完整快照，保留所有三角面和数值，导出成本与在线首屏成本不同。
+
 固定布局：中央模型、右侧证据与输入、底部版本记录。参考工程工具的模型视窗与属性栏，未增加第二套聊天系统。不联网加载字体、脚本或模型，无自动上传，无浏览器执行 CAD/求解命令。
 
 ## 首次打开示例
@@ -43,8 +58,10 @@ powershell -ExecutionPolicy Bypass -File scripts/start_viewer.ps1
 
 注册时绑定 `result.json`、最终 `mesh.npz` 与 `fields.npz` 的 SHA-256；重新载入时检测改变即撤下模型及有利判定。场文件必须在该结果目录内。原 CAD 等输入的求解时绑定仍由原结果负责；Viewer 的绑定只证明记录载入一致，不证明其物理真实性。
 
-`index.html`、`workbench.js`、`workbench.css` 可一起离线打开，离线仅反映导出时快照，不能检查原文件后续变化。离线批注下载为 JSON；实时保存与阶段同步需要本机服务。会话里含本机路径和模型数据，分享前自行检查。每个证据文件上限 128 MiB，显示预算 30 万节点 / 40 万三角形，超限明确提示，不自动降采样或改变分析。
+`index.html`、`workbench.js`、`workbench.css` 可一起离线打开，离线仅反映导出时快照，不能检查原文件后续变化。离线批注下载为 JSON；实时保存与阶段同步需要本机服务。会话里含本机路径和模型数据，分享前自行检查。每个证据文件及 NPZ 展开数据上限 256 MiB，显示预算 30 万表面节点 / 40 万三角形，超限明确提示，不自动降采样或改变分析。
 
-Windows 启动器使用所在技能目录的 `.venv`。这是本地开发版，全局安装版本以该环境的安装元数据为准；先前的公开预览 ZIP 保持独立。
+在线入口先显示轻量加载页，通过 `/index` 读取摘要，再用 `/run?id=...` 按需核验选中版本及对照场，避免把大数组同时嵌入 DOM 与重复传输。`/state` 保留兼容。显示数据只省略三角面未引用的内部节点；全部表面三角形、对应位移、积分点峰值和完整验收摘要保留。离线快照仍含完整可见场，可用 `view --session SESSION` 导出；实时服务正常停止时也导出当前快照。强制结束进程不保证更新离线快照。
+
+Windows 启动器使用所在技能目录的 `.venv`。通过 `doctor.runtime_identity` 核对实际包路径、资源目录和 SKILL 哈希；版本号相同不代表代码相同。本地源码、全局安装和先前公开预览 ZIP 各自独立。
 
 Task workspaces add a small mixed-method completion section to this same Viewer. It rechecks task sources and evidence hashes; external recorded outcomes stay labeled. CAD revisions can share a Viewer using `task start --viewer-session`, while keeping fresh task workspaces and unchanged comparison gates.

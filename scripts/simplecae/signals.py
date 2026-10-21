@@ -50,13 +50,14 @@ def digest(value):
 
 
 def structural_contract(case):
+    from .region_rules import region_contract
     # Geometry/provenance revisions may change; task physics and validity gates
     # must not. Face-ID hashes intentionally prevent unverified ID rebinding.
     return {key:case.get(key) for key in ('schema_version','material','supports','loads','gravity','criteria','conditions','buckling','load_cases','connections','probes')} | {k:case[k] for k in ('contact_control','bolts','stress_regions') if k in case} | {
         'body_materials':[{k:b.get(k) for k in ('name','material')} for b in case.get('bodies',[])],
         'quality_gates':{k:v for k,v in case.get('mesh',{}).items() if k not in ('sizes_mm','max_elements','local_refinements')},
         'reference_only':case.get('reference_only',False),
-        'task_id':case.get('provenance',{}).get('task_id')}
+        'task_id':case.get('provenance',{}).get('task_id')} | region_contract(case)
 
 
 def robot_contract(case, robot=None):
@@ -81,7 +82,9 @@ def robot_contract(case, robot=None):
 
 def recorded_contract_matches(case,contract,robot=False):
     """Retain the recorded contract hash, but reject contradictory embedded inputs."""
-    if not robot:return contract==structural_contract(case)
+    if not robot:
+        try:return contract==structural_contract(case)
+        except (ValueError, OSError, KeyError, TypeError):return False
     # Component template physics and URDF-derived ratings are frozen at solve time.
     # Compare the embedded task/ports without re-reading possibly archived templates.
     keys=('schema_version','poses','gravity_m_s2','payloads','loads','base','base_pose',
@@ -118,6 +121,18 @@ def design_signal(result):
     status=result.get('status','invalid');valid=status in ('pass_under_stated_model','fail_under_stated_model')
     valid=valid and 'unresolved_contract' not in contract
     feedback=[];utilizations={};metrics={};coverage={};physical=False;limit=None;criterion_assessments={}
+    if contract.get('region_bindings'):
+        from .case import sha256
+        models=[case['model']] if 'model' in case else [b['model'] for b in case.get('bodies',[])]
+        try:
+            for model in models:
+                if model.get('interface_manifest'):
+                    for field in ('path','interface_manifest'):
+                        p=Path(model[field]).resolve()
+                        if result.get('source_files_sha256',{}).get(str(p))!=sha256(p):
+                            raise ValueError('Region source changed since the recorded solve')
+        except (OSError,ValueError,KeyError) as exc:
+            valid=False;feedback.append({'kind':'evidence_gap','scope':'region_binding','message':str(exc)})
     if result.get('task_contract') and not recorded_contract_matches(case,contract,robot):
         valid=False
         feedback.append({'kind':'evidence_gap','scope':'task_contract',

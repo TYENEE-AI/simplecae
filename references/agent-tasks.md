@@ -1,5 +1,39 @@
 # One task file and mixed-method completion records
 
+## Cumulative execution and qualified continuation
+
+`task run --budget-seconds` limits one worker. The first attempt establishes a
+persisted branch allowance (the same value unless `--total-budget-seconds` is
+given). Later checks and retries consume its remaining time; increasing the
+per-attempt value does not reset it. `task status --brief` exposes spent/remaining
+time and `execution_next_action: review_execution_budget` when exhausted.
+Use `task start NEW.json --out NEW --continue-from OLD` for a CAD revision of the
+same task_id: it shares the allowance, not prior completion or numerical results.
+An independent task starts an independent allowance; do not evade an exhausted
+branch by renaming its workspace.
+
+Plan enough total time for the chosen checks. A justified, authorized allowance
+change uses `--total-budget-seconds NEW_TOTAL --budget-reason TEXT`. This is
+separate from `--retry-reason`, which identifies an execution repair. Both the
+old attempts and allowance changes remain in `execution-budget.json`.
+The worker deadline remains hard. Report/retention overhead is charged afterwards
+and can exhaust the branch; it is not itself interrupted mid-write. A killed
+controller retains its full reservation. Confirm workers have stopped before
+handling a leftover budget lock; never delete the budget ledger as cache.
+
+For qualified linear solids and bonded assemblies, pass the same explicit
+`--reuse-levels CACHE_DIRECTORY` on the first and subsequent `task run` or
+`design-check`. Complete mesh levels are saved before the next level starts;
+incomplete/corrupt levels are not reused. The cache is separate from outputs.
+Requested-load-only and capacity/fixed-response modes have distinct keys.
+Every reused level rechecks native decks/fields, and the new run still performs
+the full convergence and task assessment. Contact history, thermal, modal and
+robot continuation through these task entry points remain unsupported and are
+rejected before launching a worker. Do not substitute simpler physics to resume.
+Direct `design-check` remains one bounded attempt; use tasks for cumulative
+branch accounting. Python uses `continue_from`, `total_budget_seconds`,
+`budget_reason`, and `reuse_levels` with the same meanings.
+
 Repeated `task run` on an unchanged computed check is rejected before a worker
 starts. Read `task status --brief` first. An identified execution/environment
 repair may be retried with `--retry-reason TEXT` (Python `retry_reason=...`);

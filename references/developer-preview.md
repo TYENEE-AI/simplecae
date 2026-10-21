@@ -27,7 +27,7 @@ Maintainers can reproduce numerical/software checks from frozen sources:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest --junitxml=outputs/guard-tests.xml
-.\.venv\Scripts\python.exe scripts/verify_release.py --out outputs/verification-001 --timeout 600
+.\.venv\Scripts\python.exe scripts/verify_release.py --out outputs/verification-001 --timeout 3000
 .\.venv\Scripts\python.exe scripts/verify_preview.py --out outputs/preview-001
 .\.venv\Scripts\python.exe scripts/audit_dependencies.py
 ```

@@ -28,8 +28,9 @@ shapes as diagnostic information with an indeterminate use verdict.
   have no added numerical fixtures.
 - `elastic_mode_count`: 2–30. The solver also requests two guard modes and,
   for free bodies, six rigid modes. All returned modes are audited and stored.
-- Three `mesh.sizes_mm`, each 0.35–0.85 times its predecessor; at most
-  10,000 quadratic tetrahedra per grid. Keep supports geometrically unchanged.
+- Three `mesh.sizes_mm`, each 0.35–0.85 times its predecessor; default
+  20,000 quadratic tetrahedra per grid, explicitly adjustable through
+  `mesh.max_elements` after resource planning. Keep supports geometrically unchanged.
   Optional `mesh.local_refinements` uses the existing whole-face selector,
   `size_factor`, `distance_mm` and optional `sampling` contract described in
   [local mesh refinement](local-mesh-and-reference.md). Targets scale with each

@@ -4,6 +4,8 @@ Bonding uses exact quadratic displacement interpolation. Compliant interfaces
 integrate positive spring energy at coincident surface quadrature points. No
 body fusion, implicit contact or uncalibrated adhesive strength is inferred.
 """
+from .defaults import DEFAULT_NATIVE_TIMEOUT
+from .defaults import DEFAULT_STRUCTURAL_ELEMENTS
 from pathlib import Path
 import json
 import copy
@@ -164,7 +166,9 @@ def load_assembly_case(path):
                 if 'application_point_mm' in item:vector(item['application_point_mm'],'application point')
                 if 'scalable' in item and type(item['scalable']) is not bool:raise ValueError('scalable must be boolean')
         if len(set(names_out))!=len(names_out):raise ValueError('support/load names must be unique')
-    if not c['loads'] and not c.get('gravity') and not c.get('bolts'):raise ValueError('assembly needs loads, gravity or explicit bolt pretension')
+    driven=any(any(s.get('service_displacement_mm',[0,0,0])) for s in c['supports'])
+    if not c['loads'] and not c.get('gravity') and not c.get('bolts') and not driven:
+        raise ValueError('assembly needs loads, gravity, explicit bolt pretension or nonzero prescribed fixture motion')
     if c.get('gravity'):
         keys(c['gravity'],['acceleration_m_s2'],['acceleration_m_s2'],'gravity');g=vector(c['gravity']['acceleration_m_s2'],'gravity')
         if not any(g):raise ValueError('gravity must be nonzero')
@@ -183,7 +187,7 @@ def load_assembly_case(path):
         probe['model']=body['model'];probe['material']=body['material']
         probe['mesh']=dict(c['mesh'])
         if 'local_refinements' in body:probe['mesh']['local_refinements']=body['local_refinements']
-        validate_case(probe,allow_unloaded=bool(c.get('bolts')))
+        validate_case(probe,allow_unloaded=bool(c.get('bolts')) or driven)
         suffix=Path(body['model']['path']).suffix.lower()
         if suffix in ('.step','.stp'):
             if body['model'].get('units','mm')!='mm':raise ValueError('body.model.units: STEP is imported into mm; omit units or use "mm" as the analysis-unit annotation')
@@ -243,7 +247,42 @@ def load_assembly_case(path):
     for body in queue:
         for neighbor in graph[body]-seen:seen.add(neighbor);queue.append(neighbor)
     if seen!=body_names:raise ValueError('assembly has a disconnected body/load path to supports')
+    validate_cad_interfaces(c)
     return c
+
+
+def validate_cad_interfaces(c):
+    """Reject known curved CAD ports before allocating any volume mesh.
+
+    This is an early rejection only. Other surfaces, mesh inputs, coplanarity,
+    trimmed-footprint coverage and mesh projection retain their existing gates.
+    """
+    from .geometry import session, inventory
+    from .bridge import resolve_interfaces
+    ports={}
+    for connection in c['connections']:
+        for role in ('master','slave'):
+            side=connection[role]
+            # Plane selectors already require a constant-coordinate full face
+            # during mesh selection. Avoid extra STEP imports for that common
+            # path; explicit face IDs and named interfaces need the early check.
+            if side['selector']['type']!='plane':
+                ports.setdefault(side['body'],[]).append((connection,role))
+    for body in c['bodies']:
+        model=body['model'];path=Path(model['path'])
+        if body['name'] not in ports or path.suffix.lower() not in ('.step','.stp'):continue
+        with session(path,model) as g:
+            info=inventory(g,path)
+            if model.get('interface_manifest'):
+                info['interfaces']=resolve_interfaces(model['interface_manifest'],info)
+            faces={f['id']:f for f in info['faces']}
+            for connection,role in ports[body['name']]:
+                ids=select_faces(info,connection[role]['selector'])
+                curved=[(i,faces[i]['type']) for i in ids if faces[i]['type'].lower() in ('cylinder','cone','sphere','torus')]
+                if curved:
+                    raise ValueError(f"Connection {connection['name']} {role} body {body['name']} selects curved CAD faces {curved}; "
+                        "current assembly interfaces require planar patches. Cylindrical bore contact and other curved contact are unsupported. "
+                        "Retain the unresolved interface in the task plan or select an applicable external contact method; do not replace it with a plane or fuse the bodies.")
 
 
 def source_signature(c):
@@ -410,14 +449,14 @@ def make_assembly_mesh(c,h,out):
             if 'application_point_mm' in l:l['application_point_mm']=(rotation.T@(np.array(l['application_point_mm'])-translation)).tolist()
             local['loads'].append(l)
         if c.get('gravity'):local['gravity']={'acceleration_m_s2':(rotation.T@c['gravity']['acceleration_m_s2']).tolist()}
-        mesh=make_mesh(local,h*body.get('mesh_size_factor',1.),directory,allow_free_body=True);xyz,elements,fix,f,meta=mesh
+        mesh=make_mesh(local,h*body.get('mesh_size_factor',1.),directory,allow_free_body=True,load_to_support_axes=rotation);xyz,elements,fix,f,meta=mesh
         data=np.load(directory/'mesh.npz');node_map={n:node_id+j+1 for j,n in enumerate(sorted(xyz))};element_map={e:element_id+j+1 for j,e in enumerate(sorted(elements))}
         quality_index={int(e):j for j,e in enumerate(data['element_ids'])}
         quality_sicn=data['element_min_sicn'];quality_det=data['element_min_det_jac']
         element_sicn.update({element_map[e]:float(quality_sicn[quality_index[e]]) for e in elements})
         element_det.update({element_map[e]:float(quality_det[quality_index[e]]) for e in elements})
         node_id+=len(xyz);element_id+=len(elements)
-        if element_id>c['mesh'].get('max_elements',200000):raise ValueError('combined body mesh exceeds max_elements')
+        if element_id>c['mesh'].get('max_elements',DEFAULT_STRUCTURAL_ELEMENTS):raise ValueError('combined body mesh exceeds max_elements')
         coords.update({node_map[n]:rotation@p+translation for n,p in xyz.items()})
         tets.update({element_map[e]:[node_map[n] for n in ns] for e,ns in elements.items()});fixed.update(node_map[n] for n in fix)
         for n,ds in meta.get('fixed_dofs',{str(n):[1,2,3] for n in fix}).items():
@@ -503,7 +542,7 @@ def connection_deck(data):
     return lines
 
 
-def analyze_assembly(path,out,ccx=None,timeout=300,preview=True,*,progress=None,cache=None,reuse_levels=None,predict_capacity=True):
+def analyze_assembly(path,out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT,preview=True,*,progress=None,cache=None,reuse_levels=None,predict_capacity=True):
     from .workflow import analyze
     c=load_assembly_case(path)
     return analyze(Path(path),Path(out),ccx,timeout,preview,prepared_case=c,mesh_factory=make_assembly_mesh,source_signature=lambda:source_signature(c),progress=progress,cache=cache,reuse_levels=reuse_levels,predict_capacity=predict_capacity)

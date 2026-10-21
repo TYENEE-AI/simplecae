@@ -1,5 +1,6 @@
 """Public analytic verification cases, not experimental load-capacity evidence."""
 from __future__ import annotations
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 import copy
 from pathlib import Path
 import numpy as np
@@ -66,7 +67,7 @@ def load_final_fields(result):
     return np.load(directory / "mesh.npz"), np.load(directory / "fields.npz")
 
 
-def validate_benchmarks(out: Path, ccx=None, timeout=300):
+def validate_benchmarks(out: Path, ccx=None, timeout=DEFAULT_NATIVE_TIMEOUT):
     out.mkdir(parents=True, exist_ok=False)
     examples = generate_examples(out / "inputs")
     results = {}

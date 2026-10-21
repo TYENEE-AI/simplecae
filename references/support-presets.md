@@ -12,6 +12,13 @@ The solid `prepare` form now supports multiple selected material regions with ex
 
 Solid axes are the imported analysis axes; assembly axes are world axes. Arbitrary45° restraints are not a component subset: explicitly rotate the analysis frame or build a detailed connection model. Never silently convert them into a full clamp.
 
+A whole face may carry a load in a free direction while guiding other directions:
+for example, an XY-guided press shoe can receive a Z force on its top face. The
+mesher checks the distributed nodal forces, including any applied couple, in the
+actual support axes. A force component acting in a constrained direction on the
+same face is rejected rather than discarded. Fully constrained shared faces remain
+rejected. This does not add an inferred guide or change any declared DOF.
+
 Python example:
 
 ```python

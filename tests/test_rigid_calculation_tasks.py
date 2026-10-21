@@ -97,4 +97,7 @@ def test_large_JSON_compaction_is_lossless_and_keeps_Viewer_size_gate(tmp_path,m
     for writer,name in [(case.write_json,'result.json'),(atomic_json,'viewer.json')]:
         path=tmp_path/name;writer(path,value)
         assert read_json(path)==value and '\n  ' not in path.read_text(encoding='utf8')
-    assert MAX_FILE==128*1024*1024
+    assert MAX_FILE==256*1024*1024
+    import simplecae.workbench as workbench
+    monkeypatch.setattr(workbench,'MAX_FILE',1)
+    with pytest.raises(ValueError):read_json(path)

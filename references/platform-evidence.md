@@ -1,6 +1,19 @@
 # Platform and release evidence
 
-This page distinguishes tested behavior from intended compatibility. Exact
+## Current maintenance snapshot
+
+The 2026-10-21 local maintenance round passed 898 Windows regressions, with
+2 Windows symlink-permission skips covered by actual Linux symlink checks.
+It also reran five native scenarios, safe continuation, Viewer parity/browser
+interaction and an isolated source installation using the existing Windows
+runtime. Linux checks in this round cover standard-library/cache/installer
+behavior, not native FEM. See [current validation scope](../validation/README.md).
+No new public release qualification or independent external review is claimed.
+
+## Historical qualified release coverage
+
+The table below records earlier release verification, not a rerun of every
+platform against the current maintenance sources. Exact
 source hashes, final test counts, environments and audit evidence are in a public
 release archive's `validation/public-release.json`. A source checkout without
 that receipt must not claim the archive's qualification. Historical intermediate

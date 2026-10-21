@@ -8,4 +8,14 @@
 
 普通迭代不必启用 --cache／--reuse-levels；显式缓存会额外复制完整证据，本版不自动淘汰。紧凑输出不能代替缓存完整性验证。数学验证脚本显式 full，以独立检查原生文件。
 
-项目仍随保留的修订增长。确认不再需要时，关闭相关求解和 Viewer 服务，自行删除旧输出／会话；保留重要输入、CAD 源码和打印文件。Viewer 引用被删除的结果会显示证据不可用，不能伪装成仍可复查。
+项目仍随保留的修订增长。对独立的 `--cache` 或 `--reuse-levels` 缓存目录，可以显式预览、归档和恢复：
+
+```powershell
+python scripts/simplecae_cli.py cache plan CACHE --references TASK_WORKSPACE VIEWER_SESSION --out cache-plan.json
+python scripts/simplecae_cli.py cache archive cache-plan.json --out cache.zip
+python scripts/simplecae_cli.py cache restore cache.zip --out FRESH_CACHE
+```
+
+预览列出文件、字节数、哈希，以及显式提供的任务／Viewer JSON 对缓存的引用；扫描范围之外的引用仍未知。归档前后检查源内容不变，并核对压缩包每个文件；恢复先验证全部条目、路径与哈希，再写入全新目录并复核。现有输出、模型和任务账本不能冒充缓存目录。缓存恢复不恢复通过结论，后续调用仍执行普通缓存校验。
+
+这些命令均不删除原件、不自动清理、不同步云端。用户要求保留缓存时保留全部；之后确需释放空间，先确认所有读写进程停止、所有引用根均检查且归档已验证，再取得相应清理授权。模型源码、测试结果、审计报告和 `execution-budget.json` 不是可丢弃缓存。Viewer 引用被删除的结果必须显示证据不可用。

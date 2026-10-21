@@ -4,6 +4,7 @@ from datetime import datetime,timezone
 import argparse,copy,json
 import numpy as np
 from simplecae import __version__
+from simplecae.defaults import DEFAULT_NATIVE_TIMEOUT
 from simplecae.case import load_case,sha256,write_json
 from simplecae.api import analyze_case
 from simplecae.schemas import check_contract
@@ -18,7 +19,7 @@ from simplecae.cache import files_digest
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--out',type=Path,required=True);parser.add_argument('--ccx');parser.add_argument('--timeout',type=float,default=300);parser.add_argument('--project',type=Path)
+    parser=argparse.ArgumentParser();parser.add_argument('--out',type=Path,required=True);parser.add_argument('--ccx');parser.add_argument('--timeout',type=float,default=DEFAULT_NATIVE_TIMEOUT);parser.add_argument('--project',type=Path)
     parser.add_argument('--cross-drive-task',type=Path,help='Optional actual gripper task on a different Windows drive from --out')
     a=parser.parse_args();root=Path(__file__).resolve().parents[1];out=a.out.resolve();out.mkdir(parents=True,exist_ok=False)
     snapshot=delivery_hashes(root,include_validation=False);checks=[];errors=[]

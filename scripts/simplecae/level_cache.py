@@ -7,9 +7,21 @@ from .case import sha256,write_json
 from .cache import cache_key,files_digest
 
 
-def level_key(case,h,executable):
+def validate_request(case, root, out):
+    """Expose qualified continuation only; unsupported physics is not simplified."""
+    from .contact import enabled
+    from .diagnostics import WorkflowError
+    if case['schema_version'] not in ('1.0', '2.0', 'assembly-1.0') or enabled(case):
+        raise WorkflowError('Task solved-level continuation supports linear solids/bonded assemblies only; contact, thermal, modal and robot tasks need a fresh bounded solve',
+            'unsupported_continuation',fields=['reuse_levels'],next_action='fresh_bounded_solve_with_original_physics')
+    if Path(root).resolve().is_relative_to(Path(out).resolve()):
+        raise ValueError('Solved-level cache must be outside the fresh analysis output')
+
+
+def level_key(case,h,executable,*,predict_capacity=True,require_fixed_response=False):
     physics=deepcopy(case)
     physics['mesh']['sizes_mm']=[h]
+    physics['_analysis_options'] = {'predict_capacity': predict_capacity, 'require_fixed_response': require_fixed_response}
     # Unlike pose-level complete reuse, continuation requires exact floating
     # input values. All other criteria, bounds, source and tool hashes remain.
     return cache_key(physics,executable,normalize=False)
@@ -56,7 +68,9 @@ def restore(root,key,directory):
         level=json.loads((source/'results.json').read_text(encoding='utf-8'))
         if not record.get('numerical_level_complete') or not (source/'mesh-state.npz').is_file():return None
         required=['mesh.npz','job.inp','job.dat','job.frd','job.solver.log']
-        if level['mesh'].get('fixed_nodal_forces'):required+=['fixed.inp','fixed.dat','fixed.frd','fixed-results.json']
+        options=level.get('analysis_options', {'predict_capacity':True})
+        if level['mesh'].get('fixed_nodal_forces') and (options.get('predict_capacity') or options.get('require_fixed_response')):
+            required+=['fixed.inp','fixed.dat','fixed.frd','fixed-results.json']
         if level.get('buckling'):required+=['buckling.inp','buckling.dat','buckling.frd']
         if any(not (source/name).is_file() or (source/name).stat().st_size==0 for name in required):return None
         level=relocate(level,Path(record['original_output']).resolve(),Path(directory).resolve())

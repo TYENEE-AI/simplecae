@@ -118,6 +118,15 @@ After a geometry change, create a new revision and rebind load/mounting faces.
 Keep requirements and criteria consistent to explain whether the change helps.
 This supports reliability through inspectable evidence; a scoped model pass is not product acceptance.
 
+### Continuing complex work
+
+- Task worker budgets and direct native solve timeouts default to **3000 seconds**. Explicit limits win. A task branch retains cumulative allowance across checks, retries and `--continue-from` revisions; retrying does not reset it.
+- `mesh-policy` exposes the selected physics mesh contract. `advise` uses retained evidence for mesh/resource proposals, combined assembly cost, observed phase time and unknowns. It does not change accuracy or rerun automatically.
+- After a CAD edit, `bind-regions --previous` reports region face-count, area and centroid changes; current CAD-native named manifests are supported. Ambiguity never triggers silent nearest-face substitution, and semantic intent still needs review.
+- Supported linear solids and bonded assemblies can opt into `--reuse-levels`, with input/source/completed-level validation. Structured `recovery` guides the Agent's next action.
+
+[Budgets and resources](references/execution-resources.md) · [Continuation scope](references/agent-tasks.md) · [Region binding](references/model-adapters.md)
+
 ## A real CAD → CAE iteration
 
 **A four-part controller mount, one selected heat bridge.** The image below is the
@@ -142,7 +151,8 @@ Two further cases illustrate useful outcomes beyond a pass:
 
 ## Install the runtime
 
-This checkout includes first-use maintenance fixes on top of 1.6.0. See
+This checkout includes local maintenance updates on top of 1.6.0: onboarding,
+budgets, safe continuation, region diagnostics and Viewer loading. See
 [validation scope](validation/README.md); the archived release receipt belongs
 to the earlier snapshot and is not an installation prerequisite.
 
@@ -214,6 +224,8 @@ Ordinary installation needs no release receipt or source SHA-256 comparison.
 Missing/stale receipts do not block it. `--verify-release` is an optional maintainer
 audit, not a first-use step. `--development` also works without a receipt.
 Solver download integrity and analysis validity checks remain enabled.
+When several copies exist, inspect `doctor.runtime_identity` for the executing
+package path, resource root and SKILL hash; equal version numbers do not imply equal sources.
 
 | Host | Flag | Default discovery root |
 |---|---|---|
@@ -261,11 +273,19 @@ is unresolved. No numerical state automatically grants whole-product acceptance.
 The Viewer shows real fields, iterations, stage records and annotations on
 `127.0.0.1`, without automatic upload or external web assets. Annotations are
 review input, not executable CAD commands. [Display scope](references/viewer.md).
+Online loading fetches summaries first and verifies selected/comparison fields
+on demand; deselected requests can be cancelled. Unverified fields cannot grant
+favorable rankings, and loading errors do not change numerical verdicts. Structural,
+thermal and modal evidence share a 256 MiB file/expanded-NPZ guard.
 
 Default `compact` storage losslessly compresses native DAT/FRD/MSH after readers
 finish. It keeps all mesh levels, full fields, decks, logs and failures. It does
 not silently delete old projects or create a second cache.
 [Retention](references/storage.md).
+For dedicated continuation caches, `cache plan` inventories files and references
+within supplied roots; `cache archive` verifies an archive, and `cache restore`
+uses a fresh destination. These commands never delete originals. Cleanup of tested
+caches must preserve model sources, results, task ledgers and audit evidence.
 
 For expensive work, inspect `doctor` and execution records, select a justified
 budget and calibrate a representative static/contact deck once. Auto mode uses

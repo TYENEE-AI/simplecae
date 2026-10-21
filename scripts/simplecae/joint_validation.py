@@ -1,4 +1,5 @@
 """Analytic scalar-spring references integrated with real link FEM and gates."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from pathlib import Path
 import copy, math
 import numpy as np
@@ -6,7 +7,7 @@ from .case import write_json
 from .api import analyze_case
 
 
-def validate_joint_compliance(out, ccx=None, timeout=300):
+def validate_joint_compliance(out, ccx=None, timeout=DEFAULT_NATIVE_TIMEOUT):
     from .mechanics_validation import fixtures
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=False)
     inputs=out/'inputs';_,base=fixtures(inputs)

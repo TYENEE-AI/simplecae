@@ -8,7 +8,13 @@ import numpy as np
 def viewer_data(directory:Path, include_modes=True):
     mesh=np.load(directory/"mesh.npz")
     fields=np.load(directory/"fields.npz")
-    ids=list(map(int,mesh["node_ids"]))
+    # Only surface nodes are referenced by the displayed triangles. Retaining
+    # interior volume nodes bloats every report/revision without adding visible
+    # geometry. Preserve every surface triangle and its original field values.
+    all_ids=list(map(int,mesh["node_ids"]))
+    surface_ids=set(map(int,np.asarray(mesh["surface_tri6"]).ravel()))
+    rows=[i for i,n in enumerate(all_ids) if n in surface_ids]
+    ids=[all_ids[i] for i in rows]
     index={n:i for i,n in enumerate(ids)}
     us={int(n):v for n,v in zip(fields["node_ids"],fields["displacements"])}
     u=np.array([us[n] for n in ids])
@@ -35,10 +41,12 @@ def viewer_data(directory:Path, include_modes=True):
         source=np.load(file)
         vectors={int(n):v for n,v in zip(source["node_ids"],source["displacements"])}
         modes[file.stem]=[vectors[n].tolist() for n in ids]
-    return {"xyz":mesh["xyz"].tolist(),"triangles":triangles,"stress":values,
+    return {"xyz":mesh["xyz"][rows].tolist(),"triangles":triangles,"stress":values,
             "strength":utilizations,
             "displacements":u.tolist(),"modes":modes,"units":"mm/N/MPa",
-            "stress_meaning":"Each boundary triangle is colored by its adjacent volume element's peak integration-point stress, not exact surface stress."}
+            "display":{"volume_node_count":len(all_ids),"surface_node_count":len(ids),
+                       "omitted_interior_nodes":len(all_ids)-len(ids),"surface_triangles_unchanged":True},
+            "stress_meaning":"Each boundary triangle is colored by its adjacent volume element's peak integration-point stress, not exact surface stress. Unused interior nodes are omitted only from display; numerical evidence and acceptance are unchanged."}
 
 
 def embed_viewer(directory:Path):

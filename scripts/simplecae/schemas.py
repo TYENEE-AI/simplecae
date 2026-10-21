@@ -94,7 +94,7 @@ def contracts():
     result=header|{'title':'SimpleCAE result envelope','type':'object','required':['schema_version','analysis','status','case','evaluation_signal'],'properties':{'schema_version':enum('1.0','2.0','assembly-1.0','robot-result-1.0'),'analysis':enum('linear_static','linear_static_assembly','load_case_envelope','urdf_static'),'status':status,'case':{'type':'object'},'evaluation_signal':{'type':'object'},'error':S},'additionalProperties':True,
                   'allOf':[{'if':{'properties':{'status':{'const':'invalid'}}},'then':{'required':['error']}}]}
     props={'schema_version':{'const':'simplecae-signal-1.0'},'analysis_status':status,'valid_for_comparison':B,'feasible_under_stated_model':{'type':['boolean','null']},'physical_conditions_verified':B,'whole_installation_rating_available':{'const':False},'task_contract_sha256':{'type':'string','pattern':'^[0-9a-f]{64}$'},'task_id':{},'candidate':{'type':'object'},'utilizations':{'type':'object','additionalProperties':{'type':'number','minimum':0}},'bottleneck_margin':{'type':['number','null'],'minimum':0},'metrics':{'type':'object'},'coverage':{'type':'object'},'conditional_limit':{'type':['object','null']},'feedback':arr({'type':'object','required':['kind'],'properties':{'kind':S}}),'not_assessed':arr(S),'score_meaning':S}
-    signal=header|obj(dict(props,criterion_assessments={'type':'object'}),props);signal['title']='SimpleCAE design signal';signal['allOf']=[{'if':{'properties':{'valid_for_comparison':{'const':False}}},'then':{'properties':{'bottleneck_margin':{'type':'null'},'feasible_under_stated_model':{'type':'null'}}}}]
+    signal=header|obj(dict(props,criterion_assessments={'type':'object'},whole_product_pass_available={'const':False}),props);signal['title']='SimpleCAE design signal';signal['allOf']=[{'if':{'properties':{'valid_for_comparison':{'const':False}}},'then':{'properties':{'bottleneck_margin':{'type':'null'},'feasible_under_stated_model':{'type':'null'}}}}]
     comparison=header|obj({'schema_version':{'const':'simplecae-comparison-1.0'},'comparable':B,'withheld_reasons':arr(S),'candidates':arr({'type':'object'},2),'meaning':S},('schema_version','comparable','withheld_reasons','candidates','meaning'))
     result['properties']['analysis']['enum'].extend(['frictionless_contact_assembly','staged_contact_assembly'])
     from .evidence import DOMAINS,STATES,KINDS
@@ -174,9 +174,36 @@ def export_schemas(directory):
     for name,schema in contracts().items():write_json(directory/(name+'.schema.json'),schema)
 
 
+class ContractError(ValueError):
+    """Machine-readable input repair information; remains a ValueError for API callers."""
+    def __init__(self, message, details):
+        super().__init__(message)
+        self.details = details
+
+
 def check_contract(value,kind='case'):
     from jsonschema import Draft202012Validator
-    validator=Draft202012Validator(contracts()[kind]);errors=sorted(validator.iter_errors(value),key=lambda e:list(map(str,e.path)))
+    schema=contracts()[kind]
+    if kind == 'case' and isinstance(value, dict):
+        # Derive the discriminator from the actual contract, not branch indices
+        # that silently drift whenever a physics family is added or reordered.
+        branches={}
+        for option in schema['oneOf']:
+            branch=option
+            if '$ref' in branch:
+                branch=schema
+                for token in option['$ref'].split('/')[1:]:branch=branch[token]
+            declaration=branch['properties']['schema_version']
+            versions=declaration.get('enum', [declaration.get('const')])
+            for version in versions:branches[version]=branch
+        version=value.get('schema_version')
+        if not isinstance(version,str) or version not in branches:
+            details={'code':'unsupported_schema_version','path':'$.schema_version',
+                     'supported_schema_versions':list(branches),'worker_started':False,
+                     'next_action':'Select an applicable documented case contract, or retain an unsupported/information check in a task plan. Do not rename unsupported physics to a supported analysis.'}
+            raise ContractError('JSON contract: $.schema_version: missing or unsupported schema version; supported: '+', '.join(branches),details)
+        schema=branches[version] | {'$defs':schema['$defs']}
+    validator=Draft202012Validator(schema);errors=sorted(validator.iter_errors(value),key=lambda e:list(map(str,e.path)))
     if errors:
         leaves=[]
         def descend(error):
@@ -184,16 +211,13 @@ def check_contract(value,kind='case'):
                 for child in error.context:descend(child)
             else:leaves.append(error)
         for error in errors:descend(error)
-        version=value.get('schema_version') if isinstance(value,dict) else None
-        branch={'1.0':0,'2.0':0,'assembly-1.0':1,'robot-1.0':2,'thermal-network-1.0':3,'thermal-solid-1.0':4,'modal-solid-1.0':5,'motion-loads-1.0':6,'fatigue-data-1.0':7,'creep-data-1.0':8}.get(version)
-        if kind=='case' and branch is not None:
-            selected=[e for e in leaves if len(e.absolute_schema_path)>1 and list(e.absolute_schema_path)[0]=='oneOf' and list(e.absolute_schema_path)[1]==branch]
-            if selected:leaves=selected
         leaves=sorted(leaves,key=lambda e:(-len(e.absolute_path),str(list(e.absolute_path))))
         messages=[]
         for e in leaves:
             location='$'+''.join(f'[{x}]' if isinstance(x,int) else '.'+str(x) for x in e.absolute_path)
             message=location+': '+e.message
             if message not in messages:messages.append(message)
-        raise ValueError('JSON contract: '+ '; '.join(messages[:4]))
+        raise ContractError('JSON contract: '+ '; '.join(messages[:4]),
+            {'code':'invalid_contract','issues':messages,
+             'next_action':'Repair the located input fields using the selected contract; preserve physical meaning and declared requirements.'})
     return value

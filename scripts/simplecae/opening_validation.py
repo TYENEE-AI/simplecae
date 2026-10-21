@@ -1,4 +1,5 @@
 """Native partial-opening contact reference and adverse active-count control."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from .paths import resource_root
 from pathlib import Path
 import copy,json
@@ -7,7 +8,7 @@ from .api import analyze_case
 from .case import write_json,sha256
 
 
-def validate_contact_opening(out,ccx=None,timeout=300):
+def validate_contact_opening(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     root=resource_root()
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=False)
     base=json.loads((root/'examples/mechanics/contact-partial-opening.case.json').read_text(encoding='utf-8'))

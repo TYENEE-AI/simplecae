@@ -1,5 +1,6 @@
 """CalculiX deck writing, isolated execution, complete DAT field extraction."""
 from __future__ import annotations
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 
 import os
 import platform
@@ -142,7 +143,7 @@ def timeout_diagnostic(inp, timeout):
     return result
 
 
-def execute(ccx: Path, inp: Path, timeout=300, analysis_type="static", *, threads=None):
+def execute(ccx: Path, inp: Path, timeout=DEFAULT_NATIVE_TIMEOUT, analysis_type="static", *, threads=None):
     validate_real_fields(inp)
     for ext in (".dat", ".sta", ".frd"):
         if inp.with_suffix(ext).exists():
@@ -287,8 +288,17 @@ def summarize(fields, mesh, case=None,*,probe_context=None):
     force_residual = reaction + np.array(meta["applied_force_n"])
     applied_moment=sum((np.cross(moment_coords[n],f) for n,f in forces.items()),np.zeros(3)) if nonlinear else np.array(meta['applied_moment_n_mm'])
     moment_residual = rmoment + applied_moment
-    force_error = float(np.linalg.norm(force_residual) / meta["load_force_scale_n"])
-    moment_error = float(np.linalg.norm(moment_residual) / (meta["load_force_scale_n"]*diag))
+    force_scale=meta['load_force_scale_n'];scale_basis='declared_force_moment_or_preload'
+    if force_scale <= 0 and meta.get('service_boundary'):
+        # For pure displacement control the applied work is at the fixtures.
+        # Normalize by the actual opposing reaction magnitudes, not a made-up
+        # force or the residual (which would normalize an error to itself).
+        force_scale=float(sum(np.linalg.norm(f) for f in reactions.values())/2)
+        scale_basis='half_sum_fixture_reaction_magnitudes'
+    if not np.isfinite(force_scale) or force_scale <= 0:
+        raise ValueError('No positive force/reaction scale for equilibrium verification; inspect the prescribed-motion load path')
+    force_error = float(np.linalg.norm(force_residual) / force_scale)
+    moment_error = float(np.linalg.norm(moment_residual) / (force_scale*diag))
     strain_norm = max(float(np.sqrt(np.sum(e[:3]**2) + 2*np.sum(e[3:]**2))) for e in fields["strains"].values())
     centroid = np.mean([coords[n] for n in tets[peak[0]][:4]], axis=0)
     result={"max_displacement_mm": float(np.linalg.norm(fields["displacements"][u_node])),
@@ -297,6 +307,7 @@ def summarize(fields, mesh, case=None,*,probe_context=None):
             "max_von_mises_mpa": ip_vm[peak], "peak_stress_element": peak[0], "peak_stress_integration_point": peak[1],
             "peak_element_centroid_mm": centroid.tolist(), "max_strain_norm": strain_norm,
             "reaction_force_n": reaction.tolist(), "reaction_moment_n_mm": rmoment.tolist(),
+            "equilibrium_force_scale_n":force_scale,"equilibrium_scale_basis":scale_basis,
             "reaction_definition": "CalculiX RF minus CLOAD and equivalent bolt attachment forces, restricted to supported translations; generalized tightening/lock reactions are internal, not fixture reactions",
             "force_residual_n": force_residual.tolist(), "moment_residual_n_mm": moment_residual.tolist(),
             "force_balance_relative_error": force_error, "moment_balance_relative_error": moment_error,

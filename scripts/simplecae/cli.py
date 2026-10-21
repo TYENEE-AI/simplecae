@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .defaults import DEFAULT_EXECUTION_BUDGET, DEFAULT_NATIVE_TIMEOUT
 import argparse
 import importlib.metadata
 import json
@@ -8,6 +9,7 @@ import sys
 
 from .case import sha256
 from .solver import find_ccx
+from .defaults import DEFAULT_PREVIEW_TRIANGLES, MAX_WAIT_SECONDS
 
 
 def bounded_timeout(value):
@@ -23,6 +25,14 @@ def main(argv=None):
     from . import __version__
     p.add_argument('--version',action='version',version=__version__)
     sub = p.add_subparsers(dest="command", required=True)
+    policy=sub.add_parser('mesh-policy',help='Show the declared physics mesh contract and legal planning example; no solve or criterion relaxation')
+    policy.add_argument('case',type=Path)
+    cache_ops=sub.add_parser('cache',help='Explicit cache preview, verified archive and fresh restore; originals are never purged')
+    cache_sub=cache_ops.add_subparsers(dest='cache_operation',required=True)
+    cache_plan=cache_sub.add_parser('plan');cache_plan.add_argument('root',type=Path)
+    cache_plan.add_argument('--references',type=Path,nargs='*',default=[]);cache_plan.add_argument('--out',type=Path,required=True)
+    cache_archive=cache_sub.add_parser('archive');cache_archive.add_argument('plan',type=Path);cache_archive.add_argument('--out',type=Path,required=True)
+    cache_restore=cache_sub.add_parser('restore');cache_restore.add_argument('archive',type=Path);cache_restore.add_argument('--out',type=Path,required=True)
     plan = sub.add_parser('plan', help='Review an Agent-authored use scenario and targeted check plan; never starts a solver')
     plan.add_argument('file', type=Path)
     plan.add_argument('--out', type=Path, required=True)
@@ -32,13 +42,17 @@ def main(argv=None):
     task_start.add_argument('file', type=Path)
     task_start.add_argument('--out', type=Path, required=True)
     task_start.add_argument('--viewer-session', type=Path)
+    task_start.add_argument('--continue-from', type=Path, help='Previous CAD workspace of the same task; share its cumulative execution allowance')
     task_start.add_argument('--run', help='Explicit immediate FEM or supported calculation check id')
     task_run = task_ops.add_parser('run', help='Run one declared immediate FEM or supported calculation check')
     task_run.add_argument('session', type=Path)
     task_run.add_argument('--check', required=True)
     task_run.add_argument('--retry-reason', help='Explicit reason for rerunning an unchanged computed check after an identified repair')
     for entry in (task_start, task_run):
-        entry.add_argument('--budget-seconds', type=float, default=600)
+        entry.add_argument('--total-budget-seconds', type=float, help='Cumulative branch allowance across checks/retries/continued revisions; first run defaults to budget-seconds')
+        entry.add_argument('--budget-reason', help='Required explanation for changing an existing branch allowance')
+        entry.add_argument('--reuse-levels', type=Path, help='Opt-in exact-input solved-level cache; unsupported physics rejects before worker launch')
+        entry.add_argument('--budget-seconds', type=float, default=DEFAULT_EXECUTION_BUDGET)
         entry.add_argument('--timeout', type=bounded_timeout, default='auto',help='auto shares the explicit total budget; a number sets an additional per-solve cutoff')
         entry.add_argument('--ccx')
         entry.add_argument('--depth', choices=('design', 'detailed'), default='design')
@@ -66,15 +80,23 @@ def main(argv=None):
     tune.add_argument("--out", type=Path, required=True)
     tune.add_argument("--ccx")
     tune.add_argument("--threads", type=int, nargs="+", help="Measured candidate counts, including 1; default 1/2/4 within CPU affinity")
-    tune.add_argument("--timeout", type=float, default=300)
+    tune.add_argument("--timeout", type=float, default=DEFAULT_NATIVE_TIMEOUT)
     tune.add_argument("--profile", type=Path, help="Explicit destination for future auto selection; default only retains OUT/profile.json")
     quick=sub.add_parser('quickstart',help='Run a real STEP example; all includes pass, failure, insufficient evidence and a geometry iteration')
     quick.add_argument('--out',type=Path,required=True)
     quick.add_argument('--example',choices=('pass','fail','indeterminate','iteration','all'),default='pass')
-    quick.add_argument('--ccx');quick.add_argument('--timeout',type=float,default=300)
+    quick.add_argument('--ccx');quick.add_argument('--timeout',type=float,default=DEFAULT_NATIVE_TIMEOUT)
     quick.add_argument('--quiet',action='store_true')
     quick.add_argument('--storage',choices=('compact','full'),default='compact',help='Losslessly compress native intermediates after analysis; full keeps uncompressed debug/reuse files')
     ins = sub.add_parser("inspect", help="Inspect STEP dimensions, volume and full-face inventory")
+    bind = sub.add_parser('bind-regions',help='Rerun explicit whole-face rules on this CAD revision; write a fresh interface manifest')
+    bind.add_argument('model',type=Path);bind.add_argument('--out',type=Path,required=True)
+    region_source=bind.add_mutually_exclusive_group(required=True)
+    region_source.add_argument('--rules',type=Path)
+    region_source.add_argument('--native-manifest',type=Path,help='Current CAD export with hash-bound named regions')
+    bind.add_argument('--previous',type=Path,help='Previous interface manifest for area/centroid/count diagnostics; never inherits old face IDs')
+    advice = sub.add_parser('advise',help='Suggest source-bound mesh/resource inputs from retained evidence; never modifies or runs a case')
+    advice.add_argument('case',type=Path);advice.add_argument('--evidence',type=Path,required=True);advice.add_argument('--out',type=Path,required=True)
     ins.add_argument("step", type=Path)
     ins.add_argument("--out", type=Path, required=True,help='Output JSON file path, not a directory')
     ins.add_argument("--units", choices=("mm","m","cm"))
@@ -87,7 +109,7 @@ def main(argv=None):
     run.add_argument("case", type=Path)
     run.add_argument("--out", type=Path, required=True)
     run.add_argument("--ccx")
-    run.add_argument("--timeout", type=float, default=300)
+    run.add_argument("--timeout", type=float, default=DEFAULT_NATIVE_TIMEOUT)
     run.add_argument("--no-preview", action="store_true")
     run.add_argument('--storage',choices=('compact','full'),default='compact',help='Keep all fields/evidence; gzip native DAT/FRD/MSH after completion. Use full for debug/reuse')
     run.add_argument('--quiet',action='store_true',help='Suppress stage progress; final JSON remains on stdout')
@@ -102,13 +124,14 @@ def main(argv=None):
     design.add_argument('--context',type=Path,required=True,help='Decision question, model scope, assumptions and unassessed scope JSON')
     design.add_argument('--out',type=Path,required=True)
     design.add_argument('--depth',choices=('design','detailed'),default='design')
-    design.add_argument('--budget-seconds',type=float,default=600,help='Total worker wall-clock budget including meshing and all solver stages')
+    design.add_argument('--budget-seconds',type=float,default=DEFAULT_EXECUTION_BUDGET,help='Total worker wall-clock budget including meshing and all solver stages')
     design.add_argument('--timeout',type=bounded_timeout,default='auto',help='auto shares the total budget; a number adds a per-native-solve cutoff')
     design.add_argument('--ccx');design.add_argument('--no-preview',action='store_true')
     design.add_argument('--viewer-session',type=Path);design.add_argument('--label')
     design.add_argument('--change-note',default='')
     design.add_argument('--predict-capacity',action='store_true',help='Opt in to conditional capacity prediction and any extra linear fixed-load solves; no product rating')
     design.add_argument('--storage',choices=('compact','full'),default='compact')
+    design.add_argument('--reuse-levels', type=Path, help='Opt-in verified solved-level cache; does not reuse acceptance')
     design.add_argument('--plan', type=Path, help='Bind this solve to one immediate FEM check in a usage plan')
     design.add_argument('--check-id', help='Selected usage-plan check id; never runs all planned checks')
     design_compare=sub.add_parser('design-compare',help='Compare completed checks only with the same declared scope, assumptions and numerical task')
@@ -124,7 +147,7 @@ def main(argv=None):
     view.add_argument('--port',type=int,default=0)
     batch=sub.add_parser('campaign',help='Run a typed case list with native-crash isolation and source-bound resume receipts')
     batch.add_argument('manifest',type=Path);batch.add_argument('--out',type=Path,required=True)
-    batch.add_argument('--ccx');batch.add_argument('--timeout',type=float,default=300)
+    batch.add_argument('--ccx');batch.add_argument('--timeout',type=float,default=DEFAULT_NATIVE_TIMEOUT)
     batch.add_argument('--no-preview',action='store_true');batch.add_argument('--resume',action='store_true')
     batch.add_argument('--quiet',action='store_true');batch.add_argument('--reuse-levels',type=Path)
     batch.add_argument('--storage',choices=('compact','full'),default='compact')
@@ -133,7 +156,7 @@ def main(argv=None):
     bench = sub.add_parser("validate", help="Actually solve the standard analytic cases")
     bench.add_argument("--out", type=Path, required=True)
     bench.add_argument("--ccx")
-    bench.add_argument("--timeout", type=float, default=300)
+    bench.add_argument("--timeout", type=float, default=DEFAULT_NATIVE_TIMEOUT)
     bench.add_argument("--suite",choices=("standard","extended","integration","materials","assemblies","general","robots","maker","mechanics","bolt-friction","joint-compliance","planar-footprints","contact-opening","design-checks"),default="standard")
     compare=sub.add_parser('compare',help='Compare candidates only under a shared verified task contract')
     compare.add_argument('results',type=Path,nargs='+')
@@ -149,7 +172,7 @@ def main(argv=None):
     grip.add_argument('--out',type=Path,required=True)
     task_run=sub.add_parser('analyze-gripper',help='Compile and analyze all required grip-force endpoints, with per-endpoint preview and coverage report')
     task_run.add_argument('task',type=Path);task_run.add_argument('--out',type=Path,required=True)
-    task_run.add_argument('--ccx');task_run.add_argument('--timeout',type=float,default=300)
+    task_run.add_argument('--ccx');task_run.add_argument('--timeout',type=float,default=DEFAULT_NATIVE_TIMEOUT)
     task_run.add_argument('--no-preview',action='store_true');task_run.add_argument('--quiet',action='store_true')
     task_run.add_argument('--cache',type=Path);task_run.add_argument('--reuse-levels',type=Path)
     task_run.add_argument('--include-nominal',action='store_true');task_run.add_argument('--ledger',type=Path)
@@ -157,6 +180,7 @@ def main(argv=None):
     preview=sub.add_parser('preview',help='Show support components and declared equivalent wrenches before solving')
     preview.add_argument('case',type=Path)
     preview.add_argument('--out',type=Path,required=True)
+    preview.add_argument('--max-triangles',type=int,default=DEFAULT_PREVIEW_TRIANGLES,help='Display-only budget; coarsen then fall back to bounds/inventory without changing CAD or FEM')
     summary=sub.add_parser('summarize',help='Combine analysis findings and uncovered scope into an application report')
     summary.add_argument('results',type=Path,nargs='+')
     summary.add_argument('--out',type=Path,required=True)
@@ -176,19 +200,36 @@ def main(argv=None):
     args = p.parse_args(argv)
     recorder = None
     try:
-        if hasattr(args, "timeout") and args.timeout!='auto' and (not math.isfinite(args.timeout) or args.timeout <= 0 or args.timeout > 86400):
-            raise ValueError("timeout must be positive and <= 86400 seconds")
-        if args.command == 'task':
+        if hasattr(args, "timeout") and args.timeout!='auto' and (not math.isfinite(args.timeout) or args.timeout <= 0 or args.timeout > MAX_WAIT_SECONDS):
+            raise ValueError("timeout must be finite, positive and within the platform wait range")
+        if args.command == 'cache':
+            from .cache_lifecycle import plan_cache,archive_cache,restore_cache
+            if args.cache_operation=='plan':
+                if args.out.exists() or args.out.resolve().is_relative_to(args.root.resolve()):raise ValueError('Cache plan must be fresh and outside the cache')
+                output=plan_cache(args.root,args.references)
+                from .case import write_json
+                write_json(args.out,output)
+            elif args.cache_operation=='archive':output=archive_cache(args.plan,args.out)
+            else:output=restore_cache(args.archive,args.out)
+        elif args.command == 'mesh-policy':
+            from .schemas import check_contract
+            from .mesh_policy import mesh_policy
+            output=mesh_policy(check_contract(json.loads(args.case.read_text(encoding='utf-8-sig'))))
+        elif args.command == 'task':
             from .task import start_task, run_task_check, record_task_check, task_status, brief_task_status
             if args.task_operation == 'start':
-                output = start_task(args.file, args.out, viewer_session=args.viewer_session)
+                if not args.run and any(v is not None for v in (args.total_budget_seconds,args.budget_reason,args.reuse_levels)):
+                    raise ValueError('Execution allowance/reuse options on task start require --run; otherwise supply them to task run')
+                output = start_task(args.file, args.out, viewer_session=args.viewer_session, continue_from=args.continue_from)
                 if args.run:
                     output = run_task_check(args.out, args.run, budget_seconds=args.budget_seconds,
-                        timeout=args.timeout, ccx=args.ccx, depth=args.depth, label=args.label, storage=args.storage)
+                        timeout=args.timeout, ccx=args.ccx, depth=args.depth, label=args.label, storage=args.storage,
+                        total_budget_seconds=args.total_budget_seconds, budget_reason=args.budget_reason, reuse_levels=args.reuse_levels)
             elif args.task_operation == 'run':
                 output = run_task_check(args.session, args.check, budget_seconds=args.budget_seconds,
                     timeout=args.timeout, ccx=args.ccx, depth=args.depth, label=args.label, storage=args.storage,
-                    retry_reason=args.retry_reason)
+                    retry_reason=args.retry_reason, total_budget_seconds=args.total_budget_seconds,
+                    budget_reason=args.budget_reason, reuse_levels=args.reuse_levels)
             elif args.task_operation == 'record':
                 output = record_task_check(args.session, args.check, args.evidence,
                     artifacts=args.artifact,outcome=args.outcome,observations=args.observation,
@@ -204,9 +245,15 @@ def main(argv=None):
             output['report'] = str(args.out.resolve() / 'plan-review.html')
         elif args.command == "doctor":
             from .execution import hardware_snapshot
+            from .defaults import execution_defaults
+            from .paths import resource_root
+            root=resource_root()
             exe = find_ccx(args.ccx)
             output = {"status": "ready", "python": sys.executable, "ccx": str(exe), "ccx_sha256": sha256(exe),
-                      "hardware":hardware_snapshot(),
+                      "hardware":hardware_snapshot(),"defaults":execution_defaults(),
+                      "runtime_identity":{"package_path":str(Path(__file__).resolve().parent),
+                          "resource_root":str(root),"skill_sha256":sha256(root/'SKILL.md') if (root/'SKILL.md').is_file() else None,
+                          "toolkit_version":__version__,"entrypoint":str(Path(sys.argv[0]).resolve())},
                       "packages": {n: importlib.metadata.version(n) for n in ("gmsh", "numpy", "matplotlib")}}
         elif args.command == "calibrate":
             from .parallel import calibrate
@@ -220,7 +267,7 @@ def main(argv=None):
             review=design_check(args.case,args.out,context_path=args.context,depth=args.depth,
                 budget_seconds=args.budget_seconds,timeout=args.timeout,ccx=args.ccx,preview=not args.no_preview,
                 viewer_session=args.viewer_session,label=args.label,change_note=args.change_note,predict_capacity=args.predict_capacity,storage=args.storage,
-                plan_path=args.plan,check_id=args.check_id)
+                plan_path=args.plan,check_id=args.check_id,reuse_levels=args.reuse_levels)
             output={'execution':review['execution']['state'],'model_status':review['feedback']['model_status'],
                     'review':str(args.out.resolve()/'design-review.json'),'report':str(args.out.resolve()/'design-review.html'),
                     'whole_product_pass_available':False}
@@ -236,14 +283,22 @@ def main(argv=None):
             if args.out:create_session(session,args.title)
             else:session_config(session)
             for result in args.results:add_result(session,result)
-            export_session(session)
             if args.serve:serve(session,args.port,args.open)
+            # Live HTML loads /state once; export the offline snapshot after
+            # normal server shutdown, or immediately for a non-serving command.
+            export_session(session)
             output={'viewer':str(session/'index.html'),'session':str(session),'meaning':'Local evidence review, not product acceptance or a new solve.'}
         elif args.command=='quickstart':
             from .quickstart import run_quickstart
             from .progress import cli_progress
             r=run_quickstart(args.out,args.example,args.ccx,args.timeout,None if args.quiet else cli_progress)
             output={'passed':r['passed'],'meaning':r['meaning'],'summary':str(args.out.resolve()/'quickstart.json'),'reports':r['reports']}
+        elif args.command == 'bind-regions':
+            from .region_rules import bind_regions
+            output=bind_regions(args.model,args.rules,args.out,previous=args.previous,native_manifest=args.native_manifest)
+        elif args.command == 'advise':
+            from .advice import advise
+            output=advise(args.case,args.evidence,args.out)
         elif args.command == "inspect":
             from .geometry import inspect
             model={'path':str(args.step.resolve())}
@@ -349,7 +404,7 @@ def main(argv=None):
                 output={'case':str((args.out/'gripper.robot.json').resolve()),'meaning':'Declared grip application/load generation; run analyze for poses, actuator, friction and requested component criteria. Unknown physical conditions remain false.'}
         elif args.command=='preview':
             from .preflight import preview_case
-            output=preview_case(args.case,args.out)
+            output=preview_case(args.case,args.out,max_triangles=args.max_triangles)
         elif args.command=='analyze-gripper':
             from .task_family import analyze_gripper_task
             from .progress import cli_progress
@@ -377,50 +432,22 @@ def main(argv=None):
                 from .workbench import RunRecorder
                 recorder=RunRecorder(args.viewer_session,args.case,args.out,args.label,args.change_note,callback)
                 callback=recorder
-            options={'progress':callback,'cache':args.cache,'reuse_levels':args.reuse_levels,'predict_capacity':not args.no_capacity}
-            header=json.loads(args.case.read_text(encoding='utf-8-sig'))
-            if header.get('schema_version') in ('fatigue-data-1.0', 'creep-data-1.0'):
-                if args.cache or args.reuse_levels:
-                    raise ValueError('Durability data checks do not use solver caches')
-                from .durability import analyze as analyze_durability
-                report=analyze_durability(args.case,args.out,progress=callback)
-            elif header.get('schema_version')=='motion-loads-1.0':
-                if args.cache or args.reuse_levels:
-                    raise ValueError('Motion load cache/reuse is unsupported')
-                from .motion import analyze as analyze_motion
-                report=analyze_motion(args.case,args.out,progress=callback)
-            elif header.get('schema_version')=='modal-solid-1.0':
-                if args.cache or args.reuse_levels:
-                    raise ValueError('Modal cache/reuse is unsupported')
-                from .modal import analyze as analyze_modal
-                report=analyze_modal(args.case,args.out,args.ccx,args.timeout,progress=callback)
-            elif header.get('schema_version')=='thermal-solid-1.0':
-                if args.cache or args.reuse_levels:
-                    raise ValueError('Solid thermal cache/reuse is unsupported')
-                from .thermal_solid import analyze as analyze_thermal
-                report=analyze_thermal(args.case,args.out,args.ccx,args.timeout)
-            elif header.get('schema_version')=='thermal-network-1.0':
-                if args.cache or args.reuse_levels:
-                    raise ValueError('Thermal network cache/reuse is unsupported')
-                from .thermal_network import analyze as analyze_thermal
-                report=analyze_thermal(args.case,args.out)
-            elif header.get('schema_version')=='robot-1.0':
-                from .robot import analyze_robot
-                report=analyze_robot(args.case,args.out,args.ccx,args.timeout,not args.no_preview,**options)
-            elif header.get('schema_version')=='assembly-1.0':
-                from .assembly import analyze_assembly
-                report=analyze_assembly(args.case,args.out,args.ccx,args.timeout,not args.no_preview,**options)
-            else:
-                from .workflow import analyze
-                report = analyze(args.case, args.out.resolve(), args.ccx, args.timeout, not args.no_preview,**options)
+            from .api import analyze_case
+            report=analyze_case(args.case,args.out,ccx=args.ccx,timeout=args.timeout,
+                preview=not args.no_preview,progress=callback,cache=args.cache,reuse_levels=args.reuse_levels,
+                predict_capacity=not args.no_capacity,storage=args.storage)
             output = {"status": report["status"], "result": str(args.out.resolve() / "result.json"),
                       "report": str(args.out.resolve() / "report.html")}
             if report.get("error"):
                 output["error"] = report["error"]
+            if report.get("diagnostic"): output['recovery']=report['diagnostic']
+            storage_path=args.out/'storage.json'
+            stored=json.loads(storage_path.read_text(encoding='utf-8')) if storage_path.is_file() else {'mode':args.storage,'saved_bytes':0}
+            output['storage']={k:v for k,v in stored.items() if k in ('mode','saved_bytes','errors')}
             if recorder:
                 viewer_error=recorder.finish()
                 if viewer_error:output['viewer_error']=viewer_error
-        if args.command in ('analyze','quickstart','analyze-gripper'):
+        if args.command in ('quickstart','analyze-gripper'):
             from .retention import retain_output
             output['storage'] = {k:v for k,v in retain_output(args.out,args.storage).items() if k in ('mode','saved_bytes','errors')}
         print(json.dumps(output, ensure_ascii=False, indent=2, allow_nan=False))
@@ -431,7 +458,12 @@ def main(argv=None):
         return 2 if output.get("status") == "invalid" or output.get("passed") is False else 1 if args.command=='campaign' and not output['all_results_valid'] else 0
     except Exception as exc:
         if recorder:recorder.fail(f'{type(exc).__name__}: {exc}')
-        print(json.dumps({"status": "invalid", "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False))
+        output={"status": "invalid", "error": f"{type(exc).__name__}: {exc}"}
+        from .diagnostics import diagnostic
+        output['recovery']=diagnostic(exc)
+        from .schemas import ContractError
+        if isinstance(exc,ContractError):output['diagnostic']=exc.details
+        print(json.dumps(output, ensure_ascii=False))
         return 2
     except KeyboardInterrupt:
         if recorder:recorder.fail('Interrupted by user; no completed result was registered')

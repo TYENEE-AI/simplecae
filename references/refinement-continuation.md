@@ -2,6 +2,8 @@
 
 Complete-result `--cache` and solved-level `--reuse-levels` are different opt-in operations. The latter can retain correctly solved mesh levels from an **indeterminate** run. Always use a fresh output directory; never extend or overwrite the original run in place.
 
+`task run` and `design-check` also accept `--reuse-levels` for linear solids and bonded assemblies, including requested-load checks without capacity prediction. Unsupported contact/history, thermal, modal and robot task paths reject this option before launching a worker. Capacity and fixed-response modes have distinct keys; absent fixed-load subcases are not fabricated. For task retries and CAD revisions, retain the shared branch allowance described in [agent-tasks.md](agent-tasks.md); cached levels do not carry a task verdict or extend its budget.
+
 ```powershell
 python scripts/simplecae_cli.py analyze coarse.case.json --out outputs/coarse-001 --reuse-levels outputs/mesh-cache
 # Keep unchanged physics, criteria and quality gates; append a smaller size in a new input file.

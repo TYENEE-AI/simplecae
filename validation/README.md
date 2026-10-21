@@ -1,6 +1,14 @@
 # Validation scope for this checkout
 
-This checkout includes installation/first-use fixes on top of 1.6.0.
+This checkout includes installation, budget/continuation, CAD region diagnostics,
+resource advice and Viewer maintenance on top of 1.6.0.
+`workflow-maintenance-20261021.json` records the latest scoped verification:
+898 Windows regressions passed, 2 platform-specific symlink checks skipped;
+real Linux symlink/cache checks, five native historical scenarios, three native
+recovery scenarios, Viewer parity/browser checks and isolated installation passed.
+The robot negative case remains a model failure; expected behavior passed.
+This does not establish fresh Linux native FEM or independent external review.
+
 `onboarding-fix.json` records the scoped regression and smoke checks performed.
 It does not claim a fresh full numerical release qualification.
 

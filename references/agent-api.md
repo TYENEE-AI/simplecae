@@ -1,12 +1,21 @@
 # Agent API and immutable task evidence
 
+The CLI's `analyze` command calls `analyze_case` directly so physical dispatch,
+validation and retention have one maintained entry. Failures preserve their
+original text and expose `recovery.code`, `retryable_unchanged`, `fields`,
+`next_action` and `details` where available. Schema diagnostics remain compatible.
+Python callers may use `simplecae.diagnostics.diagnostic(exception)`; known
+workflow refusals carry the same fields on `WorkflowError.diagnostic`.
+Unknown errors remain inspectable, never guessed into an automatic retry.
+`task status --brief` propagates execution recovery and the declared mesh policy.
+
 `simplecae.api.prepare_plan(plan_path, out)` validates an Agent-authored use plan and writes a small non-executing JSON/HTML review; `read_plan(path)` returns the validated input. It infers no physical facts and grants no completed-check verdict. For a selected immediate FEM item, `design_check(..., plan_path=PLAN, check_id=ID)` binds usage purpose, explicit load/support basis, expected criteria and unassessed scope to the existing analysis. `usage_feedback` is separate from raw model validity; missing requested criteria or a changed plan withhold a usage conclusion. See [use-driven checks](use-driven-checks.md).
 
-For ordinary design iteration use `simplecae.api.design_check(case_path, out, context_path=..., depth='design', budget_seconds=600, ccx=None, timeout=300, preview=True, predict_capacity=False)`. The synchronous supervisor invokes the existing solver in an owned process tree and produces `design-review.json/html`; it does not modify physics or numerical gates. `compare_design_checks(review_paths)` verifies completed task/result and scope bindings. See [bounded checks](design-checks.md) for context fields, detailed opt-in, budget exhaustion and conditional conclusions. `analyze_case(..., predict_capacity=True)` preserves its previous behavior; False checks full requested loads without extra linear capacity decomposition. Preload/lock and requested buckling remain intact. Cache/reuse is rejected with False until qualified.
+For ordinary design iteration use `simplecae.api.design_check(case_path, out, context_path=..., depth='design', budget_seconds=3000, ccx=None, timeout='auto', preview=True, predict_capacity=False)`. The synchronous supervisor invokes the existing solver in an owned process tree and produces `design-review.json/html`; it does not modify physics or numerical gates. `compare_design_checks(review_paths)` verifies completed task/result and scope bindings. See [bounded checks](design-checks.md) for context fields, detailed opt-in, budget exhaustion and conditional conclusions. `analyze_case(..., predict_capacity=True)` preserves its previous behavior; False checks full requested loads without extra linear capacity decomposition. Preload/lock and requested buckling remain intact. Complete-result cache remains rejected with False; qualified linear solved-level reuse is supported with mode-specific keys. See refinement-continuation.md.
 
 For a stable human review surface use the [local Viewer](viewer.md): `view --out SESSION`, then `analyze ... --viewer-session SESSION --label V1 --change-note REASON`. Actual stage records remain data; `SESSION/feedback/*.json` contains source-bound user annotations for the agent to read and clarify, not executed commands. The Viewer uses the existing design signal and task contract and cannot grant product acceptance.
 
-The source toolkit exposes the same file-based synchronous behavior through CLI and `simplecae.api`: `check_case(path)` and `analyze_case(path,out,ccx=None,timeout=300,preview=True)`. Output must be fresh. Analyze consumes data files, not arbitrary solver scripts. Cases use versions `1.0`, `2.0`, `assembly-1.0`, `robot-1.0`; results preserve the solid/assembly version or use `robot-result-1.0`. Signal/comparison versions are `simplecae-signal-1.0` and `simplecae-comparison-1.0`.
+The source toolkit exposes the same file-based synchronous behavior through CLI and `simplecae.api`: `check_case(path)` and `analyze_case(path,out,ccx=None,timeout=3000,preview=True)`. Output must be fresh. Analyze consumes data files, not arbitrary solver scripts. Cases use versions `1.0`, `2.0`, `assembly-1.0`, `robot-1.0`; results preserve the solid/assembly version or use `robot-result-1.0`. Signal/comparison versions are `simplecae-signal-1.0` and `simplecae-comparison-1.0`.
 
 The local multiphysics development also dispatches `thermal-network-1.0`,
 `thermal-solid-1.0`, `modal-solid-1.0`, `motion-loads-1.0`,
@@ -26,6 +35,14 @@ Version1.2 also exposes `evidence`, `evidence-review`, `interface` and `task-fam
 Evidence review uses `simplecae.evidence` and optional `summarize --ledger FILE`. Individually referenced evidence files up to10MiB are copied with hashes into the review output, keeping links inside a narrow report directory. Bindings remain the tested original sources; copied records never grant measurement truth or update old versions. Larger files retain their original path/hash in JSON rather than requiring broad workspace serving. Interface measurements use `simplecae.interface_check` and explicitly declared source references; their match/mismatch states are not structural feasibility scores.
 
 JSON files and CLI output useUTF-8, including Windows pipe output. Python consumers should specify `read_text(encoding="utf-8-sig")`. Results preserve source hashes and individual criterion records; requests for unsupported physics need a new model/contract, not reinterpreting an existing model pass.
+
+Contract failures remain `ValueError`-compatible in Python (`ContractError.details`).
+CLI errors include a `diagnostic` with a code, located issues and a next action.
+Supported case versions come from the actual schema; changing a version label
+cannot make CFD or coupled thermal stress into a supported calculation. A task
+preflight retains the selected check id with this diagnostic. Compact task status
+retains the Agent's reason, acceptance, assumptions and unassessed scope even
+before a solver runs. These are declarations, not verified physical facts.
 
 The analyzed task contract is recorded before execution; robot component physics and source hashes are captured before pose execution. Case files, all model files, semantic interface manifests, component templates and URDF assets are checked throughout one run; a changed or missing source invalidates that analysis and withholds its limit. These checks also span load-case and robot-pose envelopes. Posthoc comparison uses the saved contract and never silently reloads a changed template. Geometry/provenance revisions may change between candidates, while material, load/support/pose pattern, criteria, conditions and quality thresholds must remain comparable. Face-number selectors retain their source hash; regenerated geometry needs a new inspect/selector, and native interface/plane selectors are preferable for verified comparable regeneration.
 

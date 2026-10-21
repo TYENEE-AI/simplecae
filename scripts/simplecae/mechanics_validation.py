@@ -1,4 +1,5 @@
 """Contact loading history and section-transfer references, with adverse controls."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from .paths import resource_root
 from pathlib import Path
 import copy,json,math
@@ -66,7 +67,7 @@ def fixtures(directory):
     return cases,robot
 
 
-def validate_mechanics(out,ccx=None,timeout=300):
+def validate_mechanics(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=False);inputs=out/'inputs';cases,robot=fixtures(inputs);checks=[];results={}
     def check(name,passed,**kw):checks.append(dict(name=name,passed=bool(passed),**kw))
     def run(name,path):

@@ -2762,6 +2762,10 @@
             "units": {
               "const": "mm"
             },
+            "interface_manifest": {
+              "type": "string",
+              "minLength": 1
+            },
             "expected_bbox_mm": {
               "type": "array",
               "items": {
@@ -2899,6 +2903,23 @@
                           "geometry_sha256"
                         ],
                         "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
+                        ],
+                        "additionalProperties": false
                       }
                     ]
                   },
@@ -2989,6 +3010,23 @@
                           "type",
                           "ids",
                           "geometry_sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
                         ],
                         "additionalProperties": false
                       }
@@ -3082,6 +3120,23 @@
                           "geometry_sha256"
                         ],
                         "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
+                        ],
+                        "additionalProperties": false
                       }
                     ]
                   },
@@ -3173,6 +3228,23 @@
                           "geometry_sha256"
                         ],
                         "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
+                        ],
+                        "additionalProperties": false
                       }
                     ]
                   },
@@ -3234,8 +3306,121 @@
             },
             "max_elements": {
               "type": "integer",
-              "minimum": 1,
-              "maximum": 20000
+              "minimum": 1
+            },
+            "max_field_values": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "local_refinements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "plane"
+                          },
+                          "axis": {
+                            "enum": [
+                              "x",
+                              "y",
+                              "z"
+                            ]
+                          },
+                          "position_mm": {
+                            "type": "number"
+                          },
+                          "tolerance_mm": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "axis",
+                          "position_mm"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "face_ids"
+                          },
+                          "ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "minItems": 1,
+                            "uniqueItems": true
+                          },
+                          "geometry_sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "ids",
+                          "geometry_sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "size_factor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 1
+                  },
+                  "distance_mm": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "sampling": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 500
+                  }
+                },
+                "required": [
+                  "name",
+                  "selector",
+                  "size_factor",
+                  "distance_mm"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
             },
             "preserve_boundary_nodes": {
               "type": "boolean"
@@ -3243,6 +3428,24 @@
           },
           "required": [
             "sizes_mm"
+          ],
+          "additionalProperties": false
+        },
+        "accuracy": {
+          "type": "object",
+          "properties": {
+            "temperature_tolerance_c": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "temperature_tolerance_c",
+            "basis"
           ],
           "additionalProperties": false
         },
@@ -3333,6 +3536,23 @@
                               "type",
                               "ids",
                               "geometry_sha256"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "const": "interface"
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name"
                             ],
                             "additionalProperties": false
                           }
@@ -3462,6 +3682,10 @@
             },
             "units": {
               "const": "mm"
+            },
+            "interface_manifest": {
+              "type": "string",
+              "minLength": 1
             },
             "expected_bbox_mm": {
               "type": "array",
@@ -3597,6 +3821,23 @@
                       "geometry_sha256"
                     ],
                     "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "interface"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "name"
+                    ],
+                    "additionalProperties": false
                   }
                 ]
               },
@@ -3645,8 +3886,7 @@
             },
             "max_elements": {
               "type": "integer",
-              "minimum": 1,
-              "maximum": 10000
+              "minimum": 1
             },
             "local_refinements": {
               "type": "array",
@@ -3711,6 +3951,23 @@
                           "type",
                           "ids",
                           "geometry_sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
                         ],
                         "additionalProperties": false
                       }

@@ -1,4 +1,5 @@
 """Native analytic gauges, local refinement and campaign completion/resume."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from pathlib import Path
 from copy import deepcopy
 import json
@@ -8,7 +9,7 @@ from .api import analyze_case
 from .campaign import run_campaign
 from .schemas import check_contract
 
-def validate_maker(out,ccx=None,timeout=300):
+def validate_maker(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     out=Path(out);out.mkdir(parents=True,exist_ok=False);checks=[]
     def check(name,passed,**detail):
         checks.append({'name':name,'passed':bool(passed),**detail})

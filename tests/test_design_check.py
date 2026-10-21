@@ -92,7 +92,7 @@ def test_robot_nested_detailed_physics_is_not_missed(tmp_path):
     with pytest.raises(ValueError,match='Cyclic'):detailed_features(json.loads((tmp_path/'robot.json').read_text()),tmp_path/'robot.json')
 
 
-@pytest.mark.parametrize('budget',[0,-1,float('nan'),float('inf'),True,86401])
+@pytest.mark.parametrize('budget',[0,-1,float('nan'),float('inf'),True,__import__('threading').TIMEOUT_MAX*2])
 def test_invalid_budget_rejected_before_worker(tmp_path,budget):
     c,p=files(tmp_path)
     with pytest.raises(ValueError,match='budget_seconds'):design_check(c,tmp_path/'out',context_path=p,budget_seconds=budget)

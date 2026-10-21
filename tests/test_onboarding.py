@@ -94,6 +94,44 @@ def test_bootstrap_rejects_bad_configured_solver_without_silent_download(shell_r
     assert not (root / '.tools/CalculiX-2.23.0-win-x64.zip').exists()
 
 
+@pytest.mark.parametrize('corrupt', [False, True])
+def test_bootstrap_cached_archive_does_not_depend_on_shell_archive_modules(shell_root, corrupt):
+    import hashlib
+    import zipfile
+    ps, root = shell_root
+    (root / 'scripts/runtime_ready.py').write_text('raise SystemExit(0)')
+    (root / 'scripts/simplecae/__init__.py').write_text('')
+    (root / 'scripts/simplecae/solver.py').write_text('def find_ccx(): raise FileNotFoundError("missing")')
+    (root / '.tools').mkdir()
+    archive = root / '.tools/CalculiX-2.23.0-win-x64.zip'
+    with zipfile.ZipFile(archive, 'w') as z:
+        z.writestr('CalculiX-2.23.0-win-x64/bin/ccx.exe', b'test executable placeholder; doctor is doubled')
+    script = root / 'scripts/bootstrap.ps1'
+    script.write_text(script.read_text().replace(
+        '79a674fdee735a22720bbd12bb9ccbadad1e8c8ad5b1de74e1c62f8808b2d395',
+        hashlib.sha256(archive.read_bytes()).hexdigest()), encoding='utf-8')
+    if corrupt:
+        with archive.open('ab') as stream:
+            stream.write(b'changed after pinning')
+    wrapper = root / 'module-unavailable.ps1'
+    wrapper.write_text("function Get-FileHash { throw 'Unavailable in this host' }\n"
+                       "function Expand-Archive { throw 'Unavailable in this host' }\n"
+                       "& (Join-Path $PSScriptRoot 'scripts/bootstrap.ps1')\n", encoding='utf-8')
+    env = dict(os.environ, PIP_NO_INDEX='1')
+    env.pop('SIMPLECAE_CCX', None)
+    result = subprocess.run([ps, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', str(wrapper)],
+                            capture_output=True, text=True, timeout=30, env=env)
+    solver = root / '.tools/calculix-2.23/CalculiX-2.23.0-win-x64/bin/ccx.exe'
+    if corrupt:
+        assert result.returncode != 0 and 'SHA-256 mismatch' in result.stderr
+        assert not solver.exists() and not (root / 'calls.jsonl').exists()
+    else:
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert solver.is_file()
+        calls = [json.loads(line) for line in (root / 'calls.jsonl').read_text().splitlines()]
+        assert calls == [['doctor', '--ccx', str(solver)]]
+
+
 @pytest.mark.parametrize('change', ['crlf', 'content', 'missing'])
 def test_license_audit_tolerates_line_endings_but_rejects_content_changes(tmp_path, change):
     module = load('audit_dependencies')

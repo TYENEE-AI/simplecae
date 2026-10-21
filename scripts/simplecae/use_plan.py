@@ -129,6 +129,23 @@ def plan_contract(plan):
     return value
 
 
+def render_check_scope(check):
+    """Show the existing declared scope; never infer verification from its prose."""
+    e = lambda value: html.escape(str(value))
+    lines = ['<div class="check-scope"><p><strong>判据：</strong>' + e(check['acceptance']) + '</p>']
+    for key, label in (('assumptions', '条件假设（非已验证事实）'), ('not_assessed', '未评估范围')):
+        values = check.get(key, [])
+        if values:
+            lines.append('<p><strong>' + label + '：</strong></p><ul>' + ''.join('<li>' + e(v) + '</li>' for v in values) + '</ul>')
+    latest = check.get('latest') or {}
+    if latest:
+        lines.append('<p>证据类型：' + e(latest.get('kind', 'unavailable')) + '</p>')
+        if latest.get('summary'): lines.append('<p>' + e(latest['summary']) + '</p>')
+        if latest.get('limitations'):
+            lines.append('<p><strong>本次证据限制：</strong></p><ul>' + ''.join('<li>' + e(v) + '</li>' for v in latest['limitations']) + '</ul>')
+    return ''.join(lines) + '</div>'
+
+
 def prepare_plan(path, out):
     path, out = Path(path).resolve(), Path(out).resolve()
     plan = read_plan(path)
@@ -148,7 +165,7 @@ def prepare_plan(path, out):
     write_json(out / 'plan.json', plan)
     e = lambda x: html.escape(str(x))
     rows = ''.join('<tr><td>' + '</td><td>'.join(e(c[k]) for k in ('question', 'user_impact', 'method', 'decision'))
-                   + '<td>' + e(', '.join(c['targets'])) + '</td><td>' + e(c['reason']) + '</td></tr>' for c in plan['checks'])
+                   + '<td>' + e(', '.join(c['targets'])) + '</td><td>' + e(c['reason']) + render_check_scope(c) + '</td></tr>' for c in plan['checks'])
     (out / 'plan-review.html').write_text('<!doctype html><meta charset="utf-8"><title>SimpleCAE · 使用检查计划</title>'
         '<style>body{font:15px/1.6 system-ui;max-width:1150px;margin:32px auto;padding:0 20px;color:#20252a}td,th{padding:10px;text-align:left;border-bottom:1px solid #ddd}table{border-collapse:collapse}pre{white-space:pre-wrap}</style>'
         '<h1>本次先检查什么</h1><p>' + e(plan['request']) + '</p>'

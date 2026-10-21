@@ -19,7 +19,7 @@ def resolve_interfaces(path,inventory):
         raise ValueError('interface manifest needs named regions')
     result={}
     for name,region in manifest['regions'].items():
-        keys(region,['faces','native_selector'],['faces'],'interface region')
+        keys(region,['faces','native_selector','rule'],['faces'],'interface region')
         if not isinstance(name,str) or not name or not isinstance(region['faces'],list) or not region['faces']:
             raise ValueError('interface regions require nonempty names and face signatures')
         resolved=[]
@@ -34,6 +34,10 @@ def resolve_interfaces(path,inventory):
             resolved.extend(matches)
         if len(set(resolved))!=len(resolved):
             raise ValueError('interface has duplicate face signatures')
+        if 'rule' in region:
+            from .region_rules import select_region
+            if sorted(resolved) != select_region(inventory, region['rule']):
+                raise ValueError(f'interface {name} signatures contradict its region rule')
         result[name]=sorted(resolved)
     return {'regions':result,'manifest_sha256':sha256(path),'generator':manifest['generator'],
             'model_id':manifest['model_id'],'revision':manifest['revision'],

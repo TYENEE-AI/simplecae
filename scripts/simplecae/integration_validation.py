@@ -1,4 +1,5 @@
 """Actual generator exports and URDF-to-component reference verification."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from .paths import resource_root
 from pathlib import Path
 import math
@@ -11,7 +12,7 @@ from . import __version__
 from .extended_validation import tip_mean
 
 
-def validate_integration(out,ccx=None,timeout=300):
+def validate_integration(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     out=Path(out);out.mkdir(parents=True,exist_ok=False)
     root=resource_root()
     fixtures=root/'examples/integration';robots=root/'examples/robots'

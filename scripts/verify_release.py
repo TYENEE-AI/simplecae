@@ -9,6 +9,7 @@ import sys
 import subprocess
 from datetime import datetime,timezone
 from simplecae import __version__
+from simplecae.defaults import DEFAULT_NATIVE_TIMEOUT
 from simplecae.case import sha256,write_json
 from simplecae.benchmarks import validate_benchmarks
 from simplecae.extended_validation import validate_extended
@@ -28,7 +29,7 @@ from simplecae.release import delivery_hashes
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--out',type=Path,required=True);p.add_argument('--ccx');p.add_argument('--timeout',type=float,default=300)
+    p=argparse.ArgumentParser();p.add_argument('--out',type=Path,required=True);p.add_argument('--ccx');p.add_argument('--timeout',type=float,default=DEFAULT_NATIVE_TIMEOUT)
     p.add_argument('--regression-timeout',type=float,default=1800,help='Configurable wall-clock cap for the full current test suite')
     a=p.parse_args()
     import math

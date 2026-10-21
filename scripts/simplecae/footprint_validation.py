@@ -1,11 +1,12 @@
 """Native curved annular axial joint reference, independent of application CAD."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from pathlib import Path
 import math
 from .case import write_json
 from .api import analyze_case
 
 
-def validate_footprints(out,ccx=None,timeout=300):
+def validate_footprints(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     from .geometry import session
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=False)
     with session() as g:

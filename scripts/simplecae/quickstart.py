@@ -1,4 +1,5 @@
 """Small real-solver examples of pass, failure and insufficient evidence."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from .paths import resource_root
 from pathlib import Path
 import json
@@ -8,7 +9,7 @@ from .signals import compare_results
 from .workflow import analyze
 
 
-def run_quickstart(out, example='pass', ccx=None, timeout=300, progress=None):
+def run_quickstart(out, example='pass', ccx=None, timeout=DEFAULT_NATIVE_TIMEOUT, progress=None):
     root=resource_root()
     fixtures=root/'examples/preview'
     manifest=json.loads((fixtures/'examples.json').read_text(encoding='utf-8'))

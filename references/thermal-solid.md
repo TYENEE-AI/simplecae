@@ -1,5 +1,12 @@
 # Targeted solid heat-transfer checks
 
+Curved C3D10 face heat loads use the native degree-2 surface integration rule for
+both the applied power and the nodal heat-balance audit. A separate higher-order
+surface-area comparison remains part of the quadrature gate. This avoids calling
+a difference between two load integration rules a solver residual; it does not
+relax heat balance. Total power in W is normalized on the actual native face
+area, while prescribed W/m2 flux retains its declared density.
+
 This uses the existing Gmsh/CalculiX environment and task/Viewer commands,
 without a separate desktop application. Check `--version` for the invoked
 installation and [platform evidence](platform-evidence.md) for tested scope.
@@ -79,6 +86,30 @@ refinement, and 0.05 °C for every common nodal/time sample under time refinemen
 Spatial qualification applies to the requested temperature extrema, not a claim
 of pointwise convergence everywhere or a converged heat-flux singularity.
 
+For a task whose temperature decision does not require 0.05 °C, declare its
+accuracy **before solving**, for example
+`"accuracy": {"temperature_tolerance_c": 0.5, "basis": "Concept screening with a 5 C decision reserve"}`.
+This tolerance applies to both spatial extrema and time-field comparisons.
+The undecidable acceptance band grows to `max(0.10001, 2*tolerance + 0.00001)` °C;
+a close result stays indeterminate. This is an engineering refinement screen,
+not a proven error bound. Accuracy is part of the task comparison contract:
+changing it requires a fresh task and cannot make old evidence comparable.
+Omitting it preserves the historical 0.05 °C checks and 0.10001 °C guard.
+Energy balance, boundary enforcement, geometry/Jacobians, quadrature, complete
+fields and material applicability are unchanged. Never relax a failed task's
+accuracy simply to turn it green.
+
+`preview CASE --out FRESH_DIRECTORY` now shows actual heat/temperature/convection
+faces, CAD areas, prescribed powers and the remaining insulated faces without
+requiring mechanical supports or launching a solver. It does not predict airflow
+or establish boundary applicability. Use the existing source-bound
+`mesh.local_refinements` for diagnosed curved regions; the target size scales at
+every refinement. `mesh.max_elements` (default 100000) and `mesh.max_field_values`
+(default 30000000 scalar values) are explicit resource budgets, not accuracy
+limits. Review available resources before increasing them. The common mesher
+stops an over-budget mesh before order elevation/optimization, retaining a
+located diagnostic. No required face, time, field or failure is discarded.
+
 Quadratic extrema search includes vertices, edges, faces and element interiors,
 so an interior peak is not replaced by a favorable nodal maximum. Criteria use
 the worst value across all retained refinements/times, with a 0.10001 °C numerical
@@ -89,8 +120,15 @@ cannot return a favorable comparison signal.
 The audit independently reconstructs conductive nodal terms and consistent
 storage, subtracts applied distributed heat, and checks free-node and total
 energy residuals. Native `RFL` alone is not reservoir heat loss. Native output
-roundoff uses a fixed `1e-7 W + 1e-5 × exchange-scale W` residual tolerance,
-recorded with the raw residuals; users cannot loosen it. Higher-order volume
+roundoff uses a fixed `1e-7 W + 1e-5 × exchange-scale W` residual tolerance;
+users cannot loosen it. For the independent conductive reconstruction only,
+the half-last-unit of each actual DAT temperature/RFL token is propagated as
+`abs(k K) @ temperature_half_units + rfl_half_units`. The ledger retains the
+raw mismatch, the propagated bound, and the excess beyond that bound. The
+excess is checked against the residual tolerance; total balance and free-node
+residuals retain their original gates. This prevents printed-temperature
+cancellation from being confused with solver error, without qualifying local
+heat flux or silently clipping field data. Higher-order volume
 integration also checks the native thermal quadrature, with a fixed 0.001
 relative difference gate. Fixed-temperature outputs are checked separately.
 The exchange scale includes the absolute supported nodal reactions. Equal

@@ -56,7 +56,11 @@ if ($Ccx) {
     if (-not (Test-Path -LiteralPath $simplecaeArchive)) {
         Invoke-WebRequest -Uri $simplecaeUrl -OutFile $simplecaeArchive
     }
-    if ((Get-FileHash -LiteralPath $simplecaeArchive -Algorithm SHA256).Hash.ToLower() -ne $simplecaeHash) {
+    # Use the already verified Python runtime: Agent hosts may pass a PSModulePath
+    # that omits Windows PowerShell's Get-FileHash/Expand-Archive modules.
+    $simplecaeActualHash = & $simplecaePython -c "import hashlib,sys; f=open(sys.argv[1],'rb'); print(hashlib.file_digest(f,'sha256').hexdigest()); f.close()" $simplecaeArchive
+    if ($LASTEXITCODE -ne 0) { throw 'CalculiX archive hashing failed' }
+    if ([string]$simplecaeActualHash -ne $simplecaeHash) {
         throw 'CalculiX archive SHA-256 mismatch; refusing to extract or execute'
     }
     $simplecaeDestination = [IO.Path]::GetFullPath((Join-Path $simplecaeTools 'calculix-2.23'))
@@ -65,7 +69,8 @@ if ($Ccx) {
     }
     $simplecaeCcx = Join-Path $simplecaeDestination 'CalculiX-2.23.0-win-x64\bin\ccx.exe'
     if (-not (Test-Path -LiteralPath $simplecaeCcx)) {
-        Expand-Archive -LiteralPath $simplecaeArchive -DestinationPath $simplecaeDestination
+        & $simplecaePython -c "import sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); z.extractall(sys.argv[2]); z.close()" $simplecaeArchive $simplecaeDestination
+        if ($LASTEXITCODE -ne 0) { throw 'CalculiX archive extraction failed' }
     }
     [ordered]@{version='2.23'; source_url=$simplecaeUrl; repository_commit='60c9a10b350ec813f4d493098f47f7a8b96cd276'; archive_sha256=$simplecaeHash} |
         ConvertTo-Json | Set-Content -LiteralPath (Join-Path $simplecaeTools 'calculix-provenance.json') -Encoding utf8

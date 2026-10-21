@@ -3,6 +3,7 @@
 Rigid statics does not establish link strength. Optional component FEM uses
 explicit support/load ports and the same declared gravity/payload contract.
 """
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from pathlib import Path
 import json
 import copy
@@ -339,7 +340,7 @@ def load_robot_case(path):
     return c
 
 
-def analyze_robot(path,out,ccx=None,timeout=300,preview=True,*,progress=None,cache=None,reuse_levels=None,predict_capacity=True):
+def analyze_robot(path,out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT,preview=True,*,progress=None,cache=None,reuse_levels=None,predict_capacity=True):
     from .progress import emit
     from . import __version__
     if not isinstance(predict_capacity,bool):raise ValueError('predict_capacity must be a boolean')

@@ -19,8 +19,8 @@ or establish every model/build combination. See
 [tested platform scope](platform-evidence.md).
 
 ```powershell
-python scripts/simplecae_cli.py design-check examples/preview/fail.case.json --context examples/preview/design-context.json --out outputs/design-001 --budget-seconds 600
-python scripts/simplecae_cli.py design-check examples/preview/iteration.case.json --context examples/preview/design-context.json --out outputs/design-002 --budget-seconds 600
+python scripts/simplecae_cli.py design-check examples/preview/fail.case.json --context examples/preview/design-context.json --out outputs/design-001 --budget-seconds 3000
+python scripts/simplecae_cli.py design-check examples/preview/iteration.case.json --context examples/preview/design-context.json --out outputs/design-002 --budget-seconds 3000
 python scripts/simplecae_cli.py design-compare outputs/design-001/design-review.json outputs/design-002/design-review.json --out outputs/design-comparison.json
 ```
 
@@ -33,7 +33,7 @@ Choose the analysis depth by the decision:
 - **Default `--depth design`:** explicitly justified linear solid, assembly or posed robot model. Use gross force/moment checks to cross-check the load path, and investigate sensitivity to the assumptions that could change the decision. Equivalent fixtures are scoped approximations, not measured real connections. A contact/bolt/buckling case produces `needs_explicit_model`; nothing is silently removed or substituted.
 - **On demand `--depth detailed`:** run the supplied contact, bolt preload/locking or buckling case when its behavior can change the decision, or when requested. This is a separate declared model; do not rank it against a differently supported linear model. All existing detailed-physics limitations remain.
 
-`--budget-seconds` bounds the **whole analysis worker**, including meshing, all mesh levels, fixed loads, component/pose tasks and native solves. Default 600 seconds; `--timeout auto` (the default) shares this total without an independent per-solve cutoff. A numeric `--timeout` adds a strict per-solve cap. Use [resource observations](execution-resources.md) to choose the total; there is no automatic deadline extension or criterion relaxation. On exhaustion the supervisor terminates its owned worker/descendant solvers, preserves logs and existing raw files, marks the review `budget_exhausted`, and withholds acceptance/ranking/capacity. Termination/report cleanup adds a small overhead. Native-loader failures remain environment failures. Startup/input validation before worker launch is not part of the solve budget.
+`--budget-seconds` bounds the **whole analysis worker**, including meshing, all mesh levels, fixed loads, component/pose tasks and native solves. Default 3000 seconds; `--timeout auto` (the default) shares this total without an independent per-solve cutoff. A numeric `--timeout` adds a strict per-solve cap. Use [resource observations](execution-resources.md) to choose the total; there is no automatic deadline extension or criterion relaxation. On exhaustion the supervisor terminates its owned worker/descendant solvers, preserves logs and existing raw files, marks the review `budget_exhausted`, and withholds acceptance/ranking/capacity. Termination/report cleanup adds a small overhead. Native-loader failures remain environment failures. Startup/input validation before worker launch is not part of the solve budget.
 
 CLI exit3 means budget exhausted or an explicit model/depth choice is required; exit2 means invalid input/failed execution. Exit0 means the worker completed, **not** that the structure passed: inspect `model_status` and criterion evidence, including expected failure and insufficient results.
 

@@ -11,7 +11,7 @@ import zipfile
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 
 import numpy as np
 
@@ -21,7 +21,8 @@ from .viewer import viewer_data
 
 SCHEMA = 'simplecae-viewer-1.0'
 ASSETS = resource_root() / 'assets'
-MAX_FILE = 128 * 1024 * 1024
+from .defaults import DEFAULT_VIEWER_FILE_BYTES
+MAX_FILE = DEFAULT_VIEWER_FILE_BYTES
 
 
 def now():
@@ -186,13 +187,16 @@ def dataset(path, label, body):
     return data
 
 
-def snapshot(session):
+def snapshot(session, *, include_fields=True, run_ids=None):
     session = Path(session).resolve()
     cfg = session_config(session)
     records = []
     for file in sorted((session / 'runs').glob('*.json')):
         record = read_json(file)
+        if run_ids is not None and record['id'] not in run_ids:
+            continue
         item = dict(record, datasets=[])
+        item['fields_loaded'] = include_fields
         item.pop('bindings', None)
         if record.get('design_review'):
             try:
@@ -233,12 +237,14 @@ def snapshot(session):
                 item['not_assessed'] = result.get('not_assessed', item['signal'].get('not_assessed', []))
                 item['coverage'] = result.get('coverage', item['signal'].get('coverage', {}))
                 item['poses'] = [{k: v for k, v in pose.items() if k not in ('components',)} for pose in result.get('poses', [])]
-                item['datasets'] = [dataset(path, label, body) for label, body in leaves(result)]
-                if result.get('analysis') == 'modal':
+                item['evidence_signature'] = hashlib.sha256(json.dumps(record['bindings'], sort_keys=True).encode()).hexdigest()
+                if include_fields:
+                    item['datasets'] = [dataset(path, label, body) for label, body in leaves(result)]
+                if include_fields and result.get('analysis') == 'modal':
                     from .modal import viewer_dataset
                     modal_data = viewer_dataset(path, result)
                     item['datasets'] = [modal_data] if modal_data else []
-                if result.get('analysis') == 'thermal_solid':
+                if include_fields and result.get('analysis') == 'thermal_solid':
                     from .thermal_solid import viewer_dataset
                     thermal_data = viewer_dataset(path, result)
                     item['datasets'] = [thermal_data] if thermal_data else []
@@ -256,6 +262,13 @@ def snapshot(session):
                     item['robot_visualization'] = result['visualization']
                 if result.get('error'):
                     item['error'] = result['error']
+                if not include_fields:
+                    # A lightweight list is not a newly validated field view.
+                    item['recorded_model_status'] = item['status']
+                    item['status'] = 'fields_not_loaded'
+                    item['signal'] = {k: v for k, v in item['signal'].items()
+                                      if k in ('task_id', 'task_contract_sha256', 'not_assessed')}
+                    item['signal'].update(valid_for_comparison=False, feasible_under_stated_model=None)
             except Exception as exc:
                 item.update(state='unavailable', status='invalid', error=f'{type(exc).__name__}: {exc}', datasets=[])
                 item.pop('signal', None)
@@ -293,7 +306,7 @@ def snapshot(session):
 
 
 def compare_runs(session, left_id, right_id):
-    data = snapshot(session)
+    data = snapshot(session, run_ids={left_id, right_id})
     runs = {r['id']: r for r in data['runs']}
     selected = [runs.get(i) for i in (left_id, right_id)]
     if not all(r and r['state'] == 'completed' and r.get('signal', {}).get('valid_for_comparison') for r in selected):
@@ -307,7 +320,7 @@ def compare_runs(session, left_id, right_id):
 
 
 def save_note(session, incoming):
-    data = snapshot(session)
+    data = snapshot(session, run_ids={incoming.get('run_id')})
     run = next((r for r in data['runs'] if r['id'] == incoming.get('run_id')), None)
     if not run or run['state'] != 'completed' or run['result_sha256'] != incoming.get('result_sha256'):
         raise ValueError('Annotation must bind to unchanged completed evidence')
@@ -333,7 +346,7 @@ def save_note(session, incoming):
 
 def export_session(session):
     data = snapshot(session)
-    encoded = json.dumps(data, ensure_ascii=False, allow_nan=False).replace('<', '\\u003c')
+    encoded = json.dumps(data, ensure_ascii=False, allow_nan=False, separators=(',', ':')).replace('<', '\\u003c')
     template = (ASSETS / 'workbench.html').read_text(encoding='utf-8')
     (Path(session) / 'index.html').write_text(template.replace('__SIMPLECAE_DATA__', encoded), encoding='utf-8')
     for name in ('workbench.js', 'workbench.css'):
@@ -371,22 +384,38 @@ def signature(session):
 def make_server(session, port=0):
     session = Path(session).resolve()
     cfg = session_config(session)
+    # The live client already loads and verifies /state. Do not embed all fields
+    # in the initial DOM as well: large assemblies would transfer/parse them
+    # twice and can exceed browser automation frame limits before JS starts.
+    initial = {'schema_version': SCHEMA, 'title': cfg['title'], 'session': str(session),
+               'runs': [], 'notes': [], 'tasks': [], 'loading': True}
+    encoded = json.dumps(initial, ensure_ascii=False, separators=(',', ':')).replace('<', '\\u003c')
+    live_page = (ASSETS / 'workbench.html').read_text(encoding='utf-8').replace('__SIMPLECAE_DATA__', encoded).encode('utf-8')
+    for name in ('workbench.js', 'workbench.css'):
+        shutil.copyfile(ASSETS / name, session / name)
     lock = threading.Lock()
+    transport = {'aborted_responses':0}
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_):
             pass
 
         def reply(self, code, value, kind='application/json; charset=utf-8'):
-            payload = json.dumps(value, ensure_ascii=False, allow_nan=False).encode() if isinstance(value, (dict, list)) else value
-            self.send_response(code)
-            self.send_header('Content-Type', kind)
-            self.send_header('Content-Length', str(len(payload)))
-            self.send_header('Cache-Control', 'no-store')
-            self.send_header('X-Content-Type-Options', 'nosniff')
-            self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'")
-            self.end_headers()
-            self.wfile.write(payload)
+            payload = json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode() if isinstance(value, (dict, list)) else value
+            try:
+                self.send_response(code)
+                self.send_header('Content-Type', kind)
+                self.send_header('Content-Length', str(len(payload)))
+                self.send_header('Cache-Control', 'no-store')
+                self.send_header('X-Content-Type-Options', 'nosniff')
+                self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'")
+                self.end_headers()
+                self.wfile.write(payload)
+            except (ConnectionError, BrokenPipeError):
+                # A closed browser request is not a failed numerical result.
+                # Do not try to send a second error response on the same socket.
+                transport['aborted_responses']+=1
+                self.close_connection=True
 
         def allowed(self):
             hosts = {f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}'}
@@ -397,16 +426,27 @@ def make_server(session, port=0):
                 return self.reply(403, {'error': 'Loopback origin required'})
             route = urlsplit(self.path).path
             try:
-                with lock:
-                    if route == '/index':
-                        return self.reply(200, {'signature': signature(session)})
-                    if route == '/state':
-                        return self.reply(200, dict(snapshot(session), feedback_token=cfg['feedback_token']))
-                    if route in ('/', '/index.html'):
-                        export_session(session)
-                        return self.reply(200, (session / 'index.html').read_bytes(), 'text/html; charset=utf-8')
-                    if route in ('/workbench.js', '/workbench.css'):
-                        return self.reply(200, (session / route[1:]).read_bytes(), 'text/javascript; charset=utf-8' if route.endswith('.js') else 'text/css; charset=utf-8')
+                # Atomic records and source hashes protect reads. Slow field
+                # construction must not hold the feedback/index write lock.
+                if route == '/index':
+                    return self.reply(200, {'signature': signature(session),'transport':dict(transport)})
+                if route == '/state':
+                    return self.reply(200, dict(snapshot(session, include_fields=False), feedback_token=cfg['feedback_token']))
+                if route == '/run':
+                    ids = parse_qs(urlsplit(self.path).query).get('id', [])
+                    if len(ids) != 1:
+                        raise ValueError('Supply one registered run id')
+                    before = signature(session)
+                    data = snapshot(session, run_ids={ids[0]})
+                    if len(data['runs']) != 1:
+                        raise ValueError('Unknown registered run')
+                    if before != signature(session):
+                        raise ValueError('Evidence changed while loading; refresh the run list')
+                    return self.reply(200, data['runs'][0])
+                if route in ('/', '/index.html'):
+                    return self.reply(200, live_page, 'text/html; charset=utf-8')
+                if route in ('/workbench.js', '/workbench.css'):
+                    return self.reply(200, (session / route[1:]).read_bytes(), 'text/javascript; charset=utf-8' if route.endswith('.js') else 'text/css; charset=utf-8')
                 self.reply(404, {'error': 'Not found'})
             except Exception as exc:
                 self.reply(400, {'error': str(exc)})

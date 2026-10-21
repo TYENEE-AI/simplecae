@@ -1,4 +1,5 @@
 """Directional elasticity/failure reference solves and isotropic equivalence."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from .paths import resource_root
 from pathlib import Path
 import copy
@@ -38,7 +39,7 @@ def generate_material_cases(out):
     return cases
 
 
-def validate_materials(out,ccx=None,timeout=300):
+def validate_materials(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     out=Path(out);out.mkdir(parents=True,exist_ok=False);cases=generate_material_cases(out/'inputs');results={};checks=[]
     def check(name,passed,**detail):checks.append({'name':name,'passed':bool(passed),**detail})
     def compare(name,a,b,tol):

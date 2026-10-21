@@ -13,7 +13,7 @@ Required top-level keys: `schema_version: "1.0"`, `model`, `material`, `supports
 | supports | Nonempty list of `{name, selector}`; each selected face fixes X,Y,Z; no prescribed nonzero displacements, springs, contact or bolt connectors |
 | loads | Nonempty list of `{name, selector, total_force_n: [Fx,Fy,Fz]}`; nonzero vectors; distinct load faces; loads on a fixed face rejected |
 | criteria | Explicit `yield_safety_factor >= 1` and positive `max_displacement_mm` enable the two checks; missing values suppress combined capacity. Optional positive `max_small_displacement_ratio` (default 0.05), `max_strain_norm` (default 0.01) |
-| mesh | `sizes_mm`: at least three positive decreasing sizes, each <= 0.8 of the previous. Optional `displacement_relative_tolerance` (0.05), `stress_relative_tolerance` (0.10), `balance_relative_tolerance` (0.0005), `max_elements` (200000) |
+| mesh | `sizes_mm`: at least three positive decreasing sizes, each <= 0.8 of the previous. Optional `displacement_relative_tolerance` (0.05), `stress_relative_tolerance` (0.10), `balance_relative_tolerance` (0.0005), `max_elements` (500000) |
 | conditions | All five keys below explicitly true/false. `true` must have supporting evidence; it is not a substitute for evidence |
 
 Conditions: `material_verified`, `dimensions_verified`, `supports_represent_actual_mounting`, `load_pattern_verified`, `self_weight_negligible`. The first includes applicability of the declared yield criterion and strength at the relevant manufacturing/service state. The last acknowledges that self-weight is not included and must be negligible for the modeled purpose.

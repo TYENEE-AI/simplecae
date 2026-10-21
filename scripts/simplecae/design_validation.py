@@ -1,4 +1,5 @@
 """Real bounded-entry references, including expected failure/insufficiency."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from .paths import resource_root
 from pathlib import Path
 import copy
@@ -9,7 +10,7 @@ from .case import write_json
 from .design_check import design_check, compare_design_checks
 
 
-def validate_design_checks(out, ccx=None, timeout=300):
+def validate_design_checks(out, ccx=None, timeout=DEFAULT_NATIVE_TIMEOUT):
     out=Path(out).resolve();out.mkdir(parents=True,exist_ok=False)
     root=resource_root()
     context=root/'examples/preview/design-context.json'

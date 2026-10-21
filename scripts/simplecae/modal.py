@@ -1,5 +1,7 @@
 """Scoped single-solid modal checks: frequencies, shapes and exclusion bands."""
 from __future__ import annotations
+from .defaults import DEFAULT_NATIVE_TIMEOUT
+from .defaults import DEFAULT_MODAL_ELEMENTS
 import copy
 import html
 import json
@@ -51,7 +53,7 @@ def schema():
         "support_mode": enum("supported", "free_body"), "supports": dict(arr(support), maxItems=32),
         "elastic_mode_count": {"type": "integer", "minimum": 2, "maximum": 30},
         "mesh": obj({"sizes_mm": thermal["mesh"]["properties"]["sizes_mm"],
-                     "max_elements": {"type": "integer", "minimum": 1, "maximum": 10000},
+                     "max_elements": {"type": "integer", "minimum": 1},
                      "local_refinements": arr(local_refinement),
                      "preserve_boundary_nodes": B}, ("sizes_mm",)),
         "criteria": dict(arr(criteria), maxItems=32),
@@ -80,9 +82,10 @@ def read_case(path):
     if (c["support_mode"] == "free_body") != (not c["supports"]):
         raise ValueError("Free body needs no supports; supported analysis needs actual restraints")
     sizes = c["mesh"]["sizes_mm"]
-    if any(not .35 <= b/a <= .85 for a, b in zip(sizes, sizes[1:])):
+    if any(not math.nextafter(.35, -math.inf) <= b/a <= math.nextafter(.85, math.inf)
+           for a, b in zip(sizes, sizes[1:])):
         raise ValueError("Three mesh sizes require successive ratios in [0.35, 0.85]")
-    c["mesh"].setdefault("max_elements", 10000)
+    c["mesh"].setdefault("max_elements", DEFAULT_MODAL_ELEMENTS)
     from .local_mesh import validate_refinements
     validate_refinements(c["mesh"])
     for key, field in (("supports", "name"), ("criteria", "id")):
@@ -155,7 +158,7 @@ def assess(case, levels, matches):
                               "shape_correspondence": matches}
 
 
-def analyze(path, out, ccx=None, timeout=300, *, progress=None):
+def analyze(path, out, ccx=None, timeout=DEFAULT_NATIVE_TIMEOUT, *, progress=None):
     from .solver import execute, find_ccx
     from .progress import emit
     path, out = Path(path).resolve(), Path(out).resolve()
@@ -319,7 +322,8 @@ def viewer_dataset(path, result):
         raise ValueError("Modal field directory must stay inside result root")
     for name in ("mesh.npz", "modes.npz"):
         with zipfile.ZipFile(directory/name) as z:
-            if sum(i.file_size for i in z.infolist()) > 128*1024**2:
+            from .defaults import DEFAULT_VIEWER_FILE_BYTES
+            if sum(i.file_size for i in z.infolist()) > DEFAULT_VIEWER_FILE_BYTES:
                 raise ValueError("Modal display evidence exceeds expanded size limit")
     with np.load(directory/"mesh.npz", allow_pickle=False) as d, \
          np.load(directory/"modes.npz", allow_pickle=False) as f:

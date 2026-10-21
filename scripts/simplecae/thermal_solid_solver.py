@@ -7,6 +7,7 @@ and elastic constants are neither invented nor required.
 from __future__ import annotations
 
 from pathlib import Path
+from decimal import Decimal
 import re
 import numpy as np
 
@@ -70,15 +71,22 @@ def compile_boundaries(case, mesh, directory):
             if not len(patch):
                 raise ValueError("Thermal boundary has no surface elements")
             weights, elements, face_mass = {}, [], []
+            independent_area = 0.
             for tri in patch:
                 owners = index.get(tuple(sorted(map(int, tri[:3]))), [])
                 if len(owners) != 1:
                     raise ValueError("Thermal boundary is not an external solid face")
                 elements.append(owners[0])
-                values, _, _ = integrate_tri6(np.array([coords[int(n)] for n in tri]) * .001)
+                points=np.array([coords[int(n)] for n in tri]) * .001
+                _, area, _ = integrate_tri6(points)
+                independent_area += area
+                # DFLUX and FILM use the native degree-2 surface rule. Audit
+                # that same load vector; a higher-order rule on curved faces
+                # is not the load actually applied by the solver.
+                native_mass=tri6_mass(points,native=True)
+                values=native_mass.sum(axis=1)
                 if spec["type"] == "convection":
-                    face_mass.append((list(map(int, tri)), tri6_mass(
-                        np.array([coords[int(n)] for n in tri]) * .001, native=True)))
+                    face_mass.append((list(map(int, tri)), native_mass))
                 for n, w in zip(tri, values):
                     weights[int(n)] = weights.get(int(n), 0.) + float(w)
             if len(set(elements)) != len(elements):
@@ -90,6 +98,8 @@ def compile_boundaries(case, mesh, directory):
                     fixed[n] = spec["temperature_c"]
             patches[name] = dict(spec, face_ids=selected, element_sides=elements,
                                  node_weights_m2=weights, area_m2=sum(weights.values()),
+                                 independent_area_m2=independent_area,
+                                 surface_quadrature_relative_error=abs(sum(weights.values())-independent_area)/independent_area,
                                  face_mass_m2=face_mass)
     if case["mode"] == "steady" and not any(
             p["type"] in ("temperature", "convection") for p in patches.values()):
@@ -140,6 +150,18 @@ def write_deck(case, mesh, patches, fixed, path, steps=None):
     Path(path).write_text("\n".join(lines) + "\n", encoding="ascii")
 
 
+def printed_half_unit(token):
+    """Half the last decimal unit actually retained in a native DAT token."""
+    value = token.lower().replace('d', 'e')
+    match = re.fullmatch(r'([+-]?(?:\d+\.\d*|\.\d+))([+-]\d{3,})', value)
+    if match:
+        value = match[1]+'e'+match[2]
+    unit = float(Decimal(5).scaleb(Decimal(value).as_tuple().exponent-1))
+    if not np.isfinite(unit):
+        raise ValueError("Non-finite thermal field print resolution")
+    return unit
+
+
 def parse_fields(path, node_ids, element_ids, expected_times):
     """Require complete unrounded-time coverage; truncated/duplicate data fails."""
     frames = {}
@@ -160,6 +182,8 @@ def parse_fields(path, node_ids, element_ids, expected_times):
             if section in frame:
                 raise ValueError("Duplicate thermal field section")
             frame[section] = {}
+            if width == 2:
+                frame[section+'_half_unit'] = {}
         elif low and low[0].isalpha():
             section = None
         elif section and low:
@@ -174,13 +198,16 @@ def parse_fields(path, node_ids, element_ids, expected_times):
             if key in frames[stamp][section]:
                 raise ValueError("Duplicate thermal field sample")
             frames[stamp][section][key] = value
+            if width == 2:
+                frames[stamp][section+'_half_unit'][key] = printed_half_unit(parts[1])
     times = sorted(frames)
     if len(times) != len(expected_times) or not np.allclose(
             times, expected_times, rtol=2e-6, atol=1e-10):
         raise ValueError("Thermal solver has missing/unexpected time increments")
     expected_ips = {(e, ip) for e in element_ids for ip in (1, 2, 3, 4)}
     for frame in frames.values():
-        if (set(frame) != {"temperature_c", "rfl_w", "flux_w_m2"}
+        if (set(frame) != {"temperature_c", "rfl_w", "flux_w_m2",
+                           "temperature_c_half_unit", "rfl_w_half_unit"}
                 or set(frame["temperature_c"]) != set(node_ids)
                 or set(frame["rfl_w"]) != set(node_ids)
                 or set(frame["flux_w_m2"]) != expected_ips):
@@ -238,6 +265,13 @@ def energy_history(case, patches, fixed, frames, directory):
         temperature = np.array([fields["temperature_c"][int(n)] for n in ids])
         conductive = np.array([fields["rfl_w"][int(n)] for n in ids])
         reconstructed = case["material"]["conductivity_w_mk"]*(conductance @ temperature)
+        # DAT prints rounded temperatures. Propagate their actual decimal
+        # resolution through K, rather than treating cancellation in K*T as
+        # evidence of an inaccurate solve. Raw mismatch remains in the ledger.
+        temp_units = np.array([fields.get("temperature_c_half_unit", {}).get(int(n), 0.) for n in ids])
+        rfl_units = np.array([fields.get("rfl_w_half_unit", {}).get(int(n), 0.) for n in ids])
+        roundoff = case["material"]["conductivity_w_mk"]*(abs(conductance) @ temp_units)+rfl_units
+        field_residual = np.abs(reconstructed-conductive)
         body = native_weights * case.get("volumetric_heat_w_m3", 0.)
         applied = body.copy()
         surface = {}
@@ -269,7 +303,9 @@ def energy_history(case, patches, fixed, frames, directory):
                        "max_free_node_residual_w": float(np.max(np.abs(residual[free_rows])))
                        if free_rows else 0.,
                        "max_conductive_field_residual_w": float(
-                           np.max(np.abs(reconstructed-conductive))),
+                           np.max(field_residual)),
+                       "max_conductive_field_roundoff_bound_w": float(np.max(roundoff)),
+                       "max_conductive_field_excess_w": float(np.max(np.maximum(field_residual-roundoff, 0.))),
                        "independent_volume_integration_difference_m3": float(
                            np.sum(np.abs(weights-native_weights))),
                        "stored_energy_relative_zero_c_j": float(

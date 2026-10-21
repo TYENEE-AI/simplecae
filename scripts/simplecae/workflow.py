@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from datetime import datetime, timezone
 from pathlib import Path
 import platform
@@ -25,14 +26,14 @@ def save_field_arrays(directory,fields):
         strength_utilizations=strength if strength is not None else np.array([]))
 
 
-def analyze(case_path: Path, out: Path, ccx=None, timeout=300, preview=True, *, prepared_case=None,mesh_factory=None,source_signature=None,progress=None,cache=None,reuse_levels=None,predict_capacity=True,require_fixed_response=False):
+def analyze(case_path: Path, out: Path, ccx=None, timeout=DEFAULT_NATIVE_TIMEOUT, preview=True, *, prepared_case=None,mesh_factory=None,source_signature=None,progress=None,cache=None,reuse_levels=None,predict_capacity=True,require_fixed_response=False):
     from .progress import emit
     c = copy.deepcopy(prepared_case) if prepared_case is not None else load_case(case_path.resolve())
     from .contact import enabled as has_contact
     contact=has_contact(c)
     if not isinstance(predict_capacity,bool):raise ValueError('predict_capacity must be a boolean')
     if not isinstance(require_fixed_response,bool):raise ValueError('require_fixed_response must be a boolean')
-    if not predict_capacity and (cache is not None or reuse_levels is not None):raise ValueError('capacity-disabled caching is not qualified; use a fresh solve without cache/reuse-levels')
+    if not predict_capacity and cache is not None:raise ValueError('capacity-disabled full-result caching is not qualified; use solved-level reuse instead')
     if contact and (cache is not None or reuse_levels is not None):raise ValueError('contact load-history caching is not qualified; use a fresh solve without cache/reuse-levels')
     if cache is not None and Path(cache).resolve().is_relative_to(out.resolve()):
         raise ValueError('cache directory must be outside the analysis output')
@@ -87,7 +88,7 @@ def analyze(case_path: Path, out: Path, ccx=None, timeout=300, preview=True, *, 
             cached_level=None;level_key_value=None
             if reuse_levels is not None:
                 from .level_cache import level_key,restore
-                level_key_value=level_key(c,h,executable)
+                level_key_value=level_key(c,h,executable,predict_capacity=predict_capacity,require_fixed_response=require_fixed_response)
                 restored=restore(reuse_levels,level_key_value,directory)
                 if restored:
                     mesh,cached_level=restored
@@ -174,6 +175,7 @@ def analyze(case_path: Path, out: Path, ccx=None, timeout=300, preview=True, *, 
             components.append((fields,fixed_fields))
             save_field_arrays(directory,fields)
             level = {"mesh_size_mm": h, "mesh": mesh[-1], "results": summary,
+                     "analysis_options": result['analysis_options'],
                      "solver": solver, "directory": str(directory.resolve()), "input_sha256": sha256(inp),
                      "created_at_utc":cached_level.get('created_at_utc') if cached_level else datetime.now(timezone.utc).isoformat()}
             if cached_level:level['level_reuse']=cached_level['level_reuse']
@@ -190,7 +192,7 @@ def analyze(case_path: Path, out: Path, ccx=None, timeout=300, preview=True, *, 
             guard.check()
             if reuse_levels is not None and cached_level is None:
                 from .level_cache import write_state,save,level_key
-                if level_key_value==level_key(c,h,executable):
+                if level_key_value==level_key(c,h,executable,predict_capacity=predict_capacity,require_fixed_response=require_fixed_response):
                     write_state(mesh,directory)
                     try:save(reuse_levels,level_key_value,directory,level,c['mesh'].get('balance_relative_tolerance',5e-4))
                     except OSError as exc:emit(progress,'level_cache_write_failed',level=i+1,error=str(exc))

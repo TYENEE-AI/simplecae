@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from pathlib import Path
+from .defaults import DEFAULT_STRUCTURAL_ELEMENTS
 import numpy as np
 
 from .case import sha256, write_json
@@ -48,7 +49,9 @@ def inventory(g, step: Path):
         return surface_inventory(g,step,g._simplecae_source)
     volumes = g.model.getEntities(3)
     if len(volumes) != 1:
-        raise ValueError(f"v0.1 requires exactly one CAD volume; found {len(volumes)}")
+        raise ValueError(f"Single-solid analysis requires exactly one CAD volume; found {len(volumes)}. "
+                         "Use inspect --all-bodies, then select a source-bound model.solid_id / inspect --solid-id; "
+                         "for a load-transferring assembly use assembly-1.0 with explicit supported connections. No implicit fusion or contact is inferred.")
     boundary = g.model.getBoundary(volumes, oriented=False)
     surfaces = sorted(t for d, t in boundary if d == 2)
     if set(surfaces) != {t for d, t in g.model.getEntities(2)}:
@@ -169,7 +172,7 @@ def integrate_tri6(points):
     return weights, float(weights.sum()), first_moment
 
 
-def make_mesh(c, h, out: Path, allow_free_body=False):
+def make_mesh(c, h, out: Path, allow_free_body=False, load_to_support_axes=None):
     thermal = c.get("schema_version") == "thermal-solid-1.0"
     modal = c.get("schema_version") == "modal-solid-1.0"
     if thermal:
@@ -189,8 +192,13 @@ def make_mesh(c, h, out: Path, allow_free_body=False):
         load_faces = {s["name"]: select_faces(info, s["selector"]) for s in loads}
         support_union = {f for fs in support_faces.values() for f in fs}
         load_union = {f for fs in load_faces.values() for f in fs}
-        if support_union & load_union:
-            raise ValueError("a full CAD face cannot be both a support and a load")
+        from .constraints import support_dofs,check_shared_face_load
+        face_dofs={}
+        for spec in supports:
+            for face in support_faces.get(spec['name'],[]):
+                face_dofs.setdefault(face,set()).update(support_dofs(spec))
+        if any(len(face_dofs[face])==3 for face in support_union & load_union):
+            raise ValueError("a fully constrained CAD face cannot be both a support and a load")
         all_load_faces = [f for fs in load_faces.values() for f in fs]
         if len(all_load_faces) != len(set(all_load_faces)) and c.get("schema_version") != "2.0":
             raise ValueError("load regions overlap; combine forces explicitly")
@@ -205,6 +213,19 @@ def make_mesh(c, h, out: Path, allow_free_body=False):
         # clearing all mesh first invalidates charts in the Windows build.
         from .mesh_diagnostics import native_mesh_call,high_order_quality
         native_mesh_call(g,'generate',lambda:g.model.mesh.generate(3),out)
+        # Elevating order and untangling a mesh cannot reduce its element count.
+        # Enforce the caller's budget before those expensive native operations.
+        linear_count = sum(len(tags) for tags in g.model.mesh.getElements(3)[1])
+        limit = c['mesh'].get('max_elements', DEFAULT_STRUCTURAL_ELEMENTS)
+        if linear_count > limit:
+            write_json(out/'mesh-diagnostic.json', {
+                'stage': 'element_budget', 'status': 'rejected', 'mesh_size_mm': h,
+                'geometry_sha256': info['geometry_sha256'],
+                'element_count': linear_count, 'max_elements': limit,
+                'next_action': 'Review local mesh allocation or explicitly increase the resource budget; '
+                               'no order elevation, optimization or solve was started.'})
+            raise ValueError(f'mesh exceeds max_elements: {linear_count} > {limit}; '
+                             'review local sizing or increase the explicit budget')
         native_mesh_call(g,'set_order',lambda:g.model.mesh.setOrder(2),out)
         # Opt-in Gmsh constraint: retain CAD-projected boundary nodes while
         # optimizing the interior. Never flatten a curved face or move nodes
@@ -226,7 +247,7 @@ def make_mesh(c, h, out: Path, allow_free_body=False):
         ids, xyz, _ = g.model.mesh.getNodes()
         coords = {int(n): np.array(p) for n, p in zip(ids, np.asarray(xyz).reshape((-1, 3)))}
         eid, raw = g.model.mesh.getElementsByType(etype)
-        if len(eid) > c["mesh"].get("max_elements", 200000):
+        if len(eid) > c["mesh"].get("max_elements", DEFAULT_STRUCTURAL_ELEMENTS):
             raise ValueError("mesh exceeds max_elements; coarsen or increase the explicit budget")
         sicn,adaptive_jacobian,quality=high_order_quality(g,eid)
         _, _, _, _, local, _ = g.model.mesh.getElementProperties(etype)
@@ -281,6 +302,10 @@ def make_mesh(c, h, out: Path, allow_free_body=False):
             force = np.array(spec["total_force_n"], dtype=float)
             applied, center, couple = distribute_wrench(coords, integrals, force,
                 spec.get("total_moment_n_mm", [0.,0.,0.]), spec.get("application_point_mm"))
+            shared_faces=set(load_faces[spec['name']]) & support_union
+            if shared_faces:
+                shared_nodes={n for face in shared_faces for tri in surfaces[face] for n in tri}
+                check_shared_face_load(applied,fixed_dofs,shared_nodes,load_to_support_axes)
             for n, f in applied.items():
                 forces[n] = forces.get(n, np.zeros(3)) + f
                 if not spec.get("scalable", True):

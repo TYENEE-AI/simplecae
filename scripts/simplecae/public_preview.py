@@ -153,7 +153,9 @@ def check_public_qualification(root,version):
     root=Path(root)
     actual={p.relative_to(root/'validation').as_posix() for p in (root/'validation').rglob('*') if p.is_file()}
     name='public-release.json' if (root/'validation/public-release.json').is_file() else 'public-preview.json'
-    if actual!={name}:raise ValueError('public source contains unexpected validation history')
+    # README is hash-bound source documentation, not private validation history.
+    if name not in actual or actual-{name,'README.md'}:
+        raise ValueError('public source contains unexpected validation history')
     receipt=json.loads((root/'validation'/name).read_text(encoding='utf-8'))
     if (name=='public-release.json')!=(receipt.get('channel')=='release'):
         raise ValueError('public receipt filename/channel mismatch')

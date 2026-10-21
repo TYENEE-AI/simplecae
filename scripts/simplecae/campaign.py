@@ -1,4 +1,5 @@
 """Typed case batches with native-crash isolation and audited resume receipts."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from pathlib import Path
 from datetime import datetime,timezone
 import json,re,subprocess,sys
@@ -28,7 +29,7 @@ def load_campaign(path):
 def file_hashes(folder):
     return {p.relative_to(folder).as_posix():sha256(p) for p in sorted(folder.rglob('*')) if p.is_file() and p.name!='completion.json'}
 
-def run_campaign(path,out,*,ccx=None,timeout=300,preview=True,resume=False,progress=None,reuse_levels=None,storage='compact'):
+def run_campaign(path,out,*,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT,preview=True,resume=False,progress=None,reuse_levels=None,storage='compact'):
     from .retention import validate_storage
     validate_storage(storage)
     from .api import check_case

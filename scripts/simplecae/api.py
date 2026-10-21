@@ -1,4 +1,5 @@
 """Synchronous typed file API for agent orchestration; no code execution endpoint."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from pathlib import Path
 import json
 from .schemas import check_contract
@@ -59,10 +60,36 @@ def check_case(path):
     return load_case(path)
 
 
-def analyze_case(path,out,*,ccx=None,timeout=300,preview=True,progress=None,cache=None,reuse_levels=None,predict_capacity=True,storage='compact'):
+def analyze_case(path,out,*,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT,preview=True,progress=None,cache=None,reuse_levels=None,predict_capacity=True,storage='compact'):
+    from .observations import Observation
+    observation=Observation(out,progress)
+    # Never attach new telemetry to an existing result after a rejected rerun.
+    fresh=not Path(out).exists();completed=False
+    try:
+        result=_analyze_case(path,out,ccx=ccx,timeout=timeout,preview=preview,progress=observation.event,
+                             cache=cache,reuse_levels=reuse_levels,predict_capacity=predict_capacity,
+                             storage=storage,observation=observation)
+        completed=result.get('status')!='invalid'
+        if not completed:
+            result['diagnostic']={'code':'analysis_invalid','retryable_unchanged':False,
+                'next_action':'inspect_retained_diagnostics','fields':[],
+                'details':{'result_path':str(Path(out).resolve()/'result.json')}}
+        return result
+    finally:
+        if fresh:
+            import sys
+            original_error=sys.exc_info()[1]
+            try:observation.finish(completed)
+            except OSError as observation_error:
+                if original_error is None:raise
+                original_error.add_note(f'Execution observation could not be saved: {observation_error}')
+
+
+def _analyze_case(path,out,*,ccx,timeout,preview,progress,cache,reuse_levels,predict_capacity,storage,observation):
     from .retention import validate_storage, retain_output
     validate_storage(storage)
     case=check_case(path);version=case['schema_version']
+    observation.mark('analysis')
     if version in ('fatigue-data-1.0', 'creep-data-1.0'):
         if cache or reuse_levels:
             raise ValueError('Durability data checks do not use solver caches')
@@ -82,7 +109,7 @@ def analyze_case(path,out,*,ccx=None,timeout=300,preview=True,progress=None,cach
         if cache or reuse_levels:
             raise ValueError('Solid thermal cache/reuse is unsupported')
         from .thermal_solid import analyze as analyze_thermal
-        result=analyze_thermal(path,out,ccx,timeout)
+        result=analyze_thermal(path,out,ccx,timeout,progress=progress)
     elif version=='thermal-network-1.0':
         if cache or reuse_levels:
             raise ValueError('Thermal network cache/reuse is unsupported')
@@ -97,5 +124,6 @@ def analyze_case(path,out,*,ccx=None,timeout=300,preview=True,progress=None,cach
     else:
         from .workflow import analyze
         result=analyze(Path(path),Path(out),ccx,timeout,preview,progress=progress,cache=cache,reuse_levels=reuse_levels,predict_capacity=predict_capacity)
+    observation.mark('retention')
     retain_output(out, storage)
     return result

@@ -1,4 +1,5 @@
 """Reproducible numerical checks beyond the original axial/bending baseline."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from pathlib import Path
 import copy
 import math
@@ -52,7 +53,7 @@ def tip_mean(result,axis):
     return abs(float(np.mean([u[axis] for n,u in zip(fields["node_ids"],fields["displacements"]) if int(n) in ids])))
 
 
-def validate_extended(out,ccx=None,timeout=300):
+def validate_extended(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     out.mkdir(parents=True,exist_ok=False)
     inputs=generate_advanced(out/"inputs")
     results={}

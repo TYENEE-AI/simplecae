@@ -36,6 +36,35 @@ def test_fields_preserve_peak_and_material_region(tmp_path):
     assert d['displacements'][0]==[.002,0,0]
     assert not r['signal']['whole_installation_rating_available']
 
+def test_surface_display_omits_unused_nodes_without_changing_geometry_fields_or_modes(tmp_path):
+    from simplecae.viewer import viewer_data
+    path=evidence(tmp_path);directory=path.parent/'level-03'
+    with np.load(directory/'mesh.npz') as mesh:
+        original_xyz=mesh['xyz'].copy()
+    with np.load(directory/'fields.npz') as fields:
+        values={key:fields[key] for key in fields.files}
+    # Distinct fields catch incorrect index remapping, including mode vectors.
+    values['displacements']=np.arange(30,dtype=float).reshape(10,3)
+    np.savez(directory/'fields.npz',**values)
+    vectors=np.arange(30,dtype=float).reshape(10,3)*.25
+    np.savez(directory/'buckling-mode-01.npz',node_ids=np.arange(1,11),displacements=vectors)
+    field=viewer_data(directory)
+    used=[0,1,2,4,5,6]
+    assert field['xyz']==original_xyz[used].tolist()
+    assert field['displacements']==values['displacements'][used].tolist()
+    assert field['modes']['buckling-mode-01']==vectors[used].tolist()
+    expected=[[0,4,6],[4,1,5],[6,5,2],[4,5,6]]
+    actual=np.array(field['xyz'])[field['triangles']]
+    assert np.array_equal(actual,original_xyz[expected])
+    assert field['stress']==[10]*4 and field['strength']==[.4]*4
+    assert field['display']=={'volume_node_count':10,'surface_node_count':6,
+                             'omitted_interior_nodes':4,'surface_triangles_unchanged':True}
+    session=create_session(tmp_path/'viewer');add_result(session,path)
+    shown=snapshot(session)['runs'][0]['datasets'][0]
+    assert shown['face_ids']==[9]*4 and shown['element_ids']==[42]*4
+    assert shown['results']==json.loads(path.read_text())['levels'][-1]['results']
+
+
 def test_invalid_contact_diagnostic_keeps_peaks_without_promoting_evidence(tmp_path):
     path=evidence(tmp_path)
     r=json.loads(path.read_text());r['status']='invalid';r['error']='compression-only contact unexpectedly carries tensile pressure'
@@ -65,10 +94,11 @@ def test_viewer_does_not_embed_solver_only_payload_but_preserves_all_field_peaks
     assert record['signal']['valid_for_comparison'] and 'opaque_solver_payload' in path.read_text()
 
 
-def test_nonfinite_fields_do_not_take_down_other_revisions(tmp_path):
+@pytest.mark.parametrize('node_row',[0,3])
+def test_nonfinite_fields_do_not_take_down_other_revisions(tmp_path,node_row):
     path=evidence(tmp_path,'bad');fields=path.parent/'level-03/fields.npz'
     with np.load(fields) as f:values={k:f[k] for k in f.files}
-    values['displacements'][0,0]=float('nan');np.savez(fields,**values)
+    values['displacements'][node_row,0]=float('nan');np.savez(fields,**values)
     s=create_session(tmp_path/'viewer');add_result(s,path);add_result(s,evidence(tmp_path,'good'))
     bad,good=snapshot(s)['runs']
     assert bad['state']=='unavailable' and good['state']=='completed'
@@ -140,14 +170,36 @@ def test_export_escapes_script_and_has_no_remote_dependency(tmp_path):
     assert 'https://' not in html and (s/'workbench.js').exists() and (s/'workbench.css').exists()
 
 
-def test_http_scope_origins_and_feedback(tmp_path):
+def test_live_first_open_does_not_require_an_eager_offline_export(tmp_path,monkeypatch,capsys):
+    from simplecae.cli import main
+    import simplecae.workbench as wb
+    session=tmp_path/'first-view'
+    visited=[]
+    def serve(path,port,open_browser):
+        assert path==session and not (session/'index.html').exists()
+        visited.append(path)
+    monkeypatch.setattr(wb,'serve',serve)
+    main(['view','--out',str(session),'--serve'])
+    result=json.loads(capsys.readouterr().out)
+    assert visited==[session] and result['viewer']==str(session/'index.html')
+    assert (session/'index.html').is_file()
+
+
+def test_http_scope_origins_and_feedback(tmp_path,monkeypatch):
     s=create_session(tmp_path/'viewer');add_result(s,evidence(tmp_path));server=make_server(s)
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     def request(method,path,body=None,headers=None):
         c=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
         c.request(method,path,body=body,headers=headers or {});r=c.getresponse();data=r.read();status=r.status;c.close();return status,data
     try:
-        assert request('GET','/')[0]==200
+        # Initial HTML is a small shell; loading it must not reconstruct all
+        # fields. /state retains the source-bound validation and complete data.
+        import simplecae.workbench as wb
+        with monkeypatch.context() as context:
+            context.setattr(wb,'snapshot',lambda *_:(_ for _ in ()).throw(AssertionError('eager fields')))
+            status,page=request('GET','/')
+        assert status==200 and b'"loading":true' in page and len(page)<30000
+        assert b'"triangles":' not in page
         assert request('GET','/../viewer.json')[0]==404
         assert request('GET','/viewer.json')[0]==404
         assert request('GET','/state',headers={'Origin':'https://foreign.invalid'})[0]==403

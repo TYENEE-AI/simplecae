@@ -1,4 +1,5 @@
 """Closed-form 2R statics and end-to-end robot failure/coverage references."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from .paths import resource_root
 import json
 import copy
@@ -17,7 +18,7 @@ TWO_R='''<?xml version="1.0"?>
 <joint name="elbow" type="revolute"><parent link="upper"/><child link="forearm"/><origin xyz=".2 0 0"/><axis xyz="0 -1 0"/><limit lower="-3.14" upper="3.14" effort="8" velocity="1"/></joint></robot>'''
 
 
-def validate_robots(out,ccx=None,timeout=300):
+def validate_robots(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     out=Path(out);out.mkdir(parents=True,exist_ok=False);inputs=out/'inputs';inputs.mkdir();checks=[];results={}
     def check(name,passed,**kw):checks.append({'name':name,'passed':bool(passed),**kw})
     def run(name,case):

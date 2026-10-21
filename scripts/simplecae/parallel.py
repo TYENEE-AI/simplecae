@@ -1,4 +1,5 @@
 """Measured solver resource choices. These never change a mechanical criterion."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from pathlib import Path
 import json
 import math
@@ -206,7 +207,7 @@ def field_parity(reference, candidate):
     return compare(reference, candidate)
 
 
-def calibrate(inp, out, ccx=None, candidates=None, timeout=300, profile_path=None):
+def calibrate(inp, out, ccx=None, candidates=None, timeout=DEFAULT_NATIVE_TIMEOUT, profile_path=None):
     """Explicit, retained same-deck experiments; never mutates the source deck."""
     from .solver import find_ccx, execute
     from .retention import retain_output

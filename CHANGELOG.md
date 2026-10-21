@@ -1,4 +1,14 @@
-# Unreleased — local installation and first-use fixes
+# Unreleased — local workflow, resource and first-use fixes
+
+- Default task/native execution allowances are 3000 seconds; cumulative branch
+  budgets and validated opt-in solved-level continuation keep retries bounded.
+- Expose CAD revision region diagnostics, physics mesh policies, assembly resource
+  estimates, measured phase observations and structured Agent recovery.
+- Viewer loads selected fields on demand, handles disconnected responses and
+  cancels deselected requests. File/expanded-NPZ guards are consistently 256 MiB.
+- Add explicit cache inventory, verified archive and fresh restore without
+  automatic deletion; expose the actual runtime/Skill identity in doctor.
+- These are local maintenance updates, not a newly qualified public release.
 
 - Reuse compatible runtimes and configured solvers; default setup installs only
   runtime dependencies. Windows `-Locked` retains maintainer reproducibility.

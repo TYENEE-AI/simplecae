@@ -7,6 +7,24 @@ def support_dofs(spec):
         raise ValueError('support.dofs must be unique translational components from [1,2,3] (X,Y,Z)')
     return sorted(dofs)
 
+
+def check_shared_face_load(applied, fixed_dofs, shared_nodes, load_to_support_axes=None):
+    """A face may guide transverse motion while carrying load in free DOFs.
+
+    Do not remove constrained force components. Reject them, including couples
+    whose distributed nodal loads act in the constrained directions. Assembly
+    supports are world-axis DOFs, so rotate body-local forces before checking.
+    """
+    rotation=np.eye(3) if load_to_support_axes is None else np.asarray(load_to_support_axes)
+    scale=max((float(np.linalg.norm(f)) for f in applied.values()),default=0.)
+    tolerance=64*np.finfo(float).eps*scale
+    for node in shared_nodes:
+        if node not in applied:continue
+        force=rotation@applied[node]
+        if any(abs(force[d-1])>tolerance for d in fixed_dofs.get(node,())):
+            raise ValueError('shared support/load face has applied force in a constrained DOF; '
+                             'only loads in its free directions are supported; no force was discarded')
+
 def rigid_diagnostics(coords,fixed_dofs):
     if not fixed_dofs:return {'rank':0,'missing_modes':6,'missing_components':['Tx','Ty','Tz','Rx','Ry','Rz'],'null_modes':np.eye(6).tolist(),'scope':'Six common rigid motions only; not material/connection stiffness or independent-body mechanism verification.'}
     points=np.array([coords[int(n)] for n in fixed_dofs])

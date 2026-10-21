@@ -1,4 +1,5 @@
 """Connected-body verification: patch stress, compliance, frames and materials."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from .paths import resource_root
 from pathlib import Path
 import json
@@ -15,7 +16,7 @@ def tip_component(result,position_axis,component):
     return abs(float(np.mean([u[component] for n,u in zip(field['node_ids'],field['displacements']) if int(n) in ids])))
 
 
-def validate_assemblies(out,ccx=None,timeout=300):
+def validate_assemblies(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     root=resource_root();fixtures=root/'examples/assemblies';out=Path(out);out.mkdir(parents=True,exist_ok=False)
     checks=[];results={}
     def check(name,passed,**details):checks.append({'name':name,'passed':bool(passed),**details})

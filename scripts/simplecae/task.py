@@ -4,6 +4,7 @@ One input bundles a use plan and cases. Explicit FEM and rigid robot calculation
 checks can start a worker. Other tools own external checks and physical tests.
 """
 from __future__ import annotations
+from .defaults import DEFAULT_EXECUTION_BUDGET
 
 from contextlib import contextmanager
 import copy
@@ -47,8 +48,12 @@ def _paths(values, base):
 
 def _preflight(path, check_id):
     from .api import check_case
+    from .schemas import ContractError
     try:
         return check_case(path)
+    except ContractError as exc:
+        raise ContractError(f'Check {check_id}: invalid numerical input before solve: {exc}',
+                            dict(exc.details,check_id=check_id)) from exc
     except (ValueError, TypeError, KeyError) as exc:
         raise ValueError(f'Check {check_id}: invalid numerical input before solve: {exc}') from exc
 
@@ -126,7 +131,7 @@ def _load(session, current=True):
     return session, state, changed
 
 
-def start_task(path, out, *, viewer_session=None):
+def start_task(path, out, *, viewer_session=None, continue_from=None):
     """Prepare plan, cases, contexts and Viewer from one data-only file; no solve."""
     path, out = Path(path).resolve(), Path(out).resolve()
     manifest = _read(path)
@@ -187,6 +192,13 @@ def start_task(path, out, *, viewer_session=None):
         if hypothesis:
             context['change_hypothesis'] = hypothesis
         generated[cid] = (stem, case, context)
+    budget_path = out / 'execution-budget.json'
+    if continue_from is not None:
+        from .task_budget import path_for
+        previous, prior, _ = _load(continue_from, current=False)
+        if prior['task_id'] != plan['task_id']:
+            raise ValueError('Continued CAD revision must keep the task_id; unrelated tasks cannot share an allowance')
+        budget_path = path_for(previous, prior)
     out.mkdir(parents=True, exist_ok=False)
     (out / 'inputs').mkdir()
     (out / 'records').mkdir()
@@ -197,7 +209,8 @@ def start_task(path, out, *, viewer_session=None):
         cp, xp = out / 'inputs' / f'{stem}.case.json', out / 'inputs' / f'{stem}.context.json'
         write_json(cp, case)
         write_json(xp, context)
-        entries[cid] = {'case': str(cp), 'context': str(xp)}
+        from .mesh_policy import mesh_policy
+        entries[cid] = {'case': str(cp), 'context': str(xp), 'mesh_policy':mesh_policy(case)}
     prepare_plan(out / 'inputs' / 'plan.json', out / 'plan')
     local_viewer = Path(viewer_session).resolve() if viewer_session else out / 'viewer'
     if not viewer_session:
@@ -208,7 +221,9 @@ def start_task(path, out, *, viewer_session=None):
     bindings = {str(p): sha256(p) for p in sorted(sources | set((out / 'inputs').glob('*.json')) | {out / 'task-snapshot.json'})}
     state = {'schema_version': TASK_SCHEMA, 'task_id': plan['task_id'], 'plan': plan,
              'revision_sha256': digest(bindings), 'bindings': bindings, 'cases': entries,
-             'viewer_session': str(local_viewer), 'records': [], 'created_at_utc': now()}
+             'viewer_session': str(local_viewer), 'records': [], 'created_at_utc': now(),
+             'execution_budget': str(budget_path),
+             'continued_from': str(Path(continue_from).resolve()) if continue_from else None}
     atomic_json(out / 'task-state.json', state)
     return task_status(out)
 
@@ -227,8 +242,9 @@ def _save_record(session, state, record):
     atomic_json(session / 'task-state.json', state)
 
 
-def run_task_check(session, check_id, *, budget_seconds=600, timeout='auto', ccx=None,
-                   depth='design', label=None, storage='compact', retry_reason=None):
+def run_task_check(session, check_id, *, budget_seconds=DEFAULT_EXECUTION_BUDGET, timeout='auto', ccx=None,
+                   depth='design', label=None, storage='compact', retry_reason=None,
+                   total_budget_seconds=None, budget_reason=None, reuse_levels=None):
     """Run one explicit computed check; reuse all existing numerical validity gates."""
     session = Path(session).resolve()
     with _lock(session):
@@ -258,16 +274,19 @@ def run_task_check(session, check_id, *, budget_seconds=600, timeout='auto', ccx
                                  'For an identified execution/environment repair, provide retry_reason / --retry-reason. No automatic identical rerun.')
         from .design_check import design_check
         entry = state['cases'][check_id]
-        _preflight(Path(entry['case']), check_id)
+        validated = _preflight(Path(entry['case']), check_id)
+        if reuse_levels is not None:
+            from .level_cache import validate_request
+            validate_request(validated, reuse_levels, session / 'runs')
         run = session / 'runs' / secrets.token_hex(8)
-        design_check(entry['case'], run, context_path=entry['context'],
-            plan_path=session / 'inputs' / 'plan.json', check_id=check_id, depth=depth,
-            budget_seconds=budget_seconds, timeout=timeout, ccx=ccx, storage=storage,
-            # The question is unchanged across CAD revisions. The workspace
-            # identifies the revision so the Viewer does not show duplicate,
-            # indistinguishable labels; full question remains in the review.
-            viewer_session=state['viewer_session'], label=label or f'{session.name} · {check_id}',
-            change_note=_read(session / 'task-snapshot.json').get('change_hypothesis', ''))
+        from .task_budget import attempt
+        with attempt(session, state, check_id, budget_seconds, total_budget_seconds, budget_reason) as allowance:
+            design_check(entry['case'], run, context_path=entry['context'],
+                plan_path=session / 'inputs' / 'plan.json', check_id=check_id, depth=depth,
+                budget_seconds=allowance, timeout=timeout, ccx=ccx, storage=storage,
+                reuse_levels=reuse_levels,
+                viewer_session=state['viewer_session'], label=label or f'{session.name} · {check_id}',
+                change_note=_read(session / 'task-snapshot.json').get('change_hypothesis', ''))
         review_path = run / 'design-review.json'
         record = {'check_id': check_id, 'method': check['method'], 'kind': 'computed',
                   'revision_sha256': state['revision_sha256'], 'recorded_at_utc': now(),
@@ -341,6 +360,7 @@ def _analysis_note(review, usage):
             'confirmed_failed_criteria': usage.get('confirmed_failed_criteria', {}),
             'missing_result_criteria': usage.get('missing_result_criteria', []),
             'unresolved_result_criteria': usage.get('unresolved_result_criteria', [])}
+    if execution.get('recovery'):note['recovery']=execution['recovery']
     if review.get('result'):
         raw = _read(review['result']['path'])
         note['result_path'] = review['result']['path']
@@ -451,9 +471,13 @@ def task_status(session, *, export=True):
                   else (('run_fem' if check['method'] == 'fem' else 'run_calculation') if check['id'] in state['cases'] else 'prepare_case') if computed_check(check)
                   else 'execute_external_check')
         rows.append({'id': check['id'], 'question': check['question'], 'method': check['method'],
+                     'decision':check['decision'], 'reason':check['reason'],
+                     'acceptance':check['acceptance'], 'assumptions':check['assumptions'],
+                     'not_assessed':check['not_assessed'],
                      'required_for_claim': check['required_for_claim'], 'outcome': outcome,
                      'next_action': action, 'latest': latest, 'history': history,
-                     'case_ready': check['id'] in state['cases']})
+                     'case_ready': check['id'] in state['cases'],
+                     'mesh_policy':state['cases'].get(check['id'],{}).get('mesh_policy')})
     required = [r for r in rows if r['required_for_claim']]
     remaining = [r['id'] for r in required if r['outcome'] != 'pass']
     status = ('failed' if any(r['outcome'] == 'fail' for r in required) else
@@ -466,17 +490,24 @@ def task_status(session, *, export=True):
               'unknowns': state['plan']['unknowns'], 'whole_product_pass_available': False,
               'viewer_session': state['viewer_session'],
               'meaning': 'Completion of declared checks only. External outcomes are recorded assertions, not independently certified facts or product approval.'}
+    from .task_budget import read_budget
+    report['execution_budget'] = read_budget(session, state)
+    report['execution_next_action'] = ('review_execution_budget' if
+        report['execution_budget'].get('configured') and report['execution_budget']['remaining_seconds'] <= 0
+        else 'within_execution_allowance')
     if export:
         atomic_json(session / 'task-status.json', report)
         escape = html.escape
+        from .use_plan import render_check_scope
         table = ''.join('<tr><td>' + '</td><td>'.join(escape(str(r[k])) for k in
-                        ('question', 'method', 'outcome', 'next_action')) + '</td></tr>' for r in rows)
+                        ('question', 'method', 'outcome', 'next_action')) + '</td><td>' + render_check_scope(r) + '</td></tr>' for r in rows)
         (session / 'task-status.html').write_text('<!doctype html><meta charset="utf-8"><title>SimpleCAE · 检查进度</title>'
             '<style>body{font:15px/1.6 system-ui;max-width:1100px;margin:32px auto}td,th{padding:10px;text-align:left;border-bottom:1px solid #ddd}</style>'
             '<h1>使用检查进度</h1><p>' + escape(report['request']) + '</p><p>' + escape(status)
             + ' · 声明检查的完成情况，不代表产品通过。外部证据为记录结果。</p>'
-            '<table><tr><th>问题</th><th>方法</th><th>结果</th><th>下一步</th></tr>' + table
-            + '</table><p><a href="task-status.json">Agent JSON</a></p>', encoding='utf-8')
+            '<table><tr><th>问题</th><th>方法</th><th>结果</th><th>下一步</th><th>判据、假设与证据范围</th></tr>' + table
+            + '</table><h2>仍未知</h2><ul>' + ''.join('<li>' + escape(v) + '</li>' for v in report['unknowns'])
+            + '</ul><p><a href="task-status.json">Agent JSON</a></p>', encoding='utf-8')
         # Multiple CAD revisions can share the existing Viewer without copying fields.
         vp = Path(state['viewer_session']) / 'tasks'
         vp.mkdir(exist_ok=True)
@@ -490,6 +521,10 @@ def brief_task_status(report):
     checks = []
     for row in report['checks']:
         item = {k: row[k] for k in ('id', 'question', 'method', 'outcome', 'next_action')}
+        # Keep the Agent's scope and assumption provenance visible even when
+        # no solver has run. A bare "unsupported" is not an actionable handoff.
+        for key in ('decision','reason','acceptance','assumptions','not_assessed','required_for_claim','mesh_policy'):
+            if key in row:item[key]=row[key]
         latest = row.get('latest') or {}
         item['evidence_kind'] = latest.get('kind')
         if latest.get('review'):item['review_path']=latest['review']
@@ -512,5 +547,7 @@ def brief_task_status(report):
     return {k: report[k] for k in ('schema_version', 'task_id', 'session', 'status', 'revision_sha256',
             'remaining_required_checks', 'changed_inputs', 'unknowns', 'whole_product_pass_available')} | {
         'checks': checks, 'completion_counts': counts, 'progress_message': message,
+        'execution_budget': {k: v for k, v in report.get('execution_budget', {'configured': False, 'remaining_seconds': None}).items() if k not in ('attempts', 'changes')},
+        'execution_next_action': report.get('execution_next_action', 'refresh_task_status'),
         'full_report': str(Path(report['session']) / 'task-status.json'),
         'meaning': '仅为声明检查的简报；未决项仍未通过，完整历史与场文件没有删减。'}

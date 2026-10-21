@@ -5,6 +5,21 @@
   let state = JSON.parse($('initial-state').textContent), currentId = null, datasetId = null;
   let selected = null, token = '', lastSignature = '', busy = false, renderedKey = '';
   const drafts = new Map();
+  const fieldRequests = new Map();
+  async function loadRun(id){
+    const r=state.runs.find(r=>r.id===id);
+    if(!live||!r||r.state!=='completed'||r.fields_loaded!==false||r.field_load_error||fieldRequests.has(id))return;
+    const signature=r.evidence_signature;
+    const controller=new AbortController();fieldRequests.set(id,controller);
+    try{
+      const response=await fetch('/run?id='+encodeURIComponent(id),{signal:controller.signal});
+      const loaded=await response.json();
+      if(!response.ok)throw Error(loaded.error||response.status);
+      const fresh=state.runs.find(r=>r.id===id);
+      if(fresh&&fresh.evidence_signature===signature&&[currentId,$('baseline').value].includes(id))Object.assign(fresh,loaded);
+    }catch(e){const fresh=state.runs.find(r=>r.id===id);if(e.name!=='AbortError'&&fresh&&fresh.evidence_signature===signature)fresh.field_load_error=String(e.message);}
+    finally{fieldRequests.delete(id);renderState();}
+  }
   let modalPlaying=false, modalPhase=1, modalFrame=null;
   let motionStateId=null;
   let durabilityPointId=null;
@@ -24,13 +39,16 @@
   const replace = (id, children) => $(id).replaceChildren(...children.filter(Boolean));
   const download = (name, value) => {const a=node('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);};
   const noFemTask = () => !state.runs.length && state.tasks?.length>0 && state.tasks.every(t=>t.checks?.length>0&&t.checks.every(c=>c.method!=='fem'));
-  function runStatus(r){return r.state==='pending'?'尚未完成':r.state==='interrupted'?'执行中断':r.state==='unavailable'?'显示证据不可用':r.usage_feedback?.status==='insufficient_evidence'?'使用要求证据不足':!r.signal?.valid_for_comparison&&['pass_under_stated_model','fail_under_stated_model'].includes(r.status)?'证据不足（判定受限）':statusNames[r.status]||'未判定';}
-  function colorClass(r){return r.state==='completed'&&r.signal?.valid_for_comparison&&r.usage_feedback?.status!=='insufficient_evidence'?(r.status==='pass_under_stated_model'?'good':'bad'):'warning';}
+  function runStatus(r){return r.state==='pending'?'尚未完成':r.state==='interrupted'?'执行中断':r.state==='unavailable'?'显示证据不可用':r.fields_loaded===false?(r.field_load_error?'场加载失败 · 重新选择可重试':'结果已登记 · 场待核验'):r.usage_feedback?.status==='insufficient_evidence'?'使用要求证据不足':!r.signal?.valid_for_comparison&&['pass_under_stated_model','fail_under_stated_model'].includes(r.status)?'证据不足（判定受限）':statusNames[r.status]||'未判定';}
+  function colorClass(r){return r.fields_loaded!==false&&r.state==='completed'&&r.signal?.valid_for_comparison&&r.usage_feedback?.status!=='insufficient_evidence'?(r.status==='pass_under_stated_model'?'good':'bad'):'warning';}
   function option(value,text){const o=node('option','',text);o.value=value;return o;}
-  function comparable(a,b){const usage=a&&b&&(!a.usage_feedback&&!b.usage_feedback||a.usage_contract_sha256&&a.usage_contract_sha256===b.usage_contract_sha256&&a.usage_check_id===b.usage_check_id&&a.usage_feedback?.status!=='insufficient_evidence'&&b.usage_feedback?.status!=='insufficient_evidence');return usage&&a&&b&&a.state==='completed'&&b.state==='completed'&&a.signal?.valid_for_comparison&&b.signal?.valid_for_comparison&&a.signal.task_id&&a.signal.task_id===b.signal.task_id&&a.signal.task_contract_sha256===b.signal.task_contract_sha256&&(!a.design_review&&!b.design_review||a.design_context_sha256&&a.design_context_sha256===b.design_context_sha256&&a.design_depth===b.design_depth&&a.design_check_execution?.state==='completed'&&b.design_check_execution?.state==='completed');}
+  function comparable(a,b){const usage=a&&b&&(!a.usage_feedback&&!b.usage_feedback||a.usage_contract_sha256&&a.usage_contract_sha256===b.usage_contract_sha256&&a.usage_check_id===b.usage_check_id&&a.usage_feedback?.status!=='insufficient_evidence'&&b.usage_feedback?.status!=='insufficient_evidence');return usage&&a&&b&&a.fields_loaded!==false&&b.fields_loaded!==false&&a.state==='completed'&&b.state==='completed'&&a.signal?.valid_for_comparison&&b.signal?.valid_for_comparison&&a.signal.task_id&&a.signal.task_id===b.signal.task_id&&a.signal.task_contract_sha256===b.signal.task_contract_sha256&&(!a.design_review&&!b.design_review||a.design_context_sha256&&a.design_context_sha256===b.design_context_sha256&&a.design_depth===b.design_depth&&a.design_check_execution?.state==='completed'&&b.design_check_execution?.state==='completed');}
   function counterpart(){if(data()?.physics==='modal')return null;const b=state.runs.find(r=>r.id===$('baseline').value);return comparable(current(),b)?b?.datasets.find(d=>d.label===data()?.label):null;}
   function renderState(){
     if(!state.runs.some(r=>r.id===currentId))currentId=state.runs.at(-1)?.id||null;
+    // Release unselected arrays before drawing their evidence status badges.
+    if(live)for(const r of state.runs)if(![currentId,$('baseline').value].includes(r.id)){r.datasets=[];r.fields_loaded=false;}
+    if(live)for(const [id,controller] of fieldRequests)if(![currentId,$('baseline').value].includes(id))controller.abort();
     $('title').textContent=state.title;document.title=state.title+' · SimpleCAE';
     $('session-path').textContent=state.session;
     $('task-progress').hidden=!(state.tasks?.length);
@@ -42,6 +60,10 @@
       if(t.error)group.append(node('p','warning',t.error));
       for(const c of t.checks||[]){
         const line=node('div','evidence-line');line.append(node('strong',c.outcome==='pass'?'good':c.outcome==='fail'?'bad':'warning',(completionNames[c.outcome]||c.outcome)+' · '+(methodNames[c.method]||c.method)+' · '),node('span','',c.question+(c.latest?.kind==='externally_recorded'?'（外部记录）':'')+(c.required_for_claim?'':'（可选）')));group.append(line);
+        if(c.acceptance)group.append(node('p','hint','本项判据：'+c.acceptance));
+        for(const assumption of c.assumptions||[])group.append(node('p','hint','条件假设（非已验证事实）：'+assumption));
+        for(const gap of c.not_assessed||[])group.append(node('p','hint','未评估：'+gap));
+        for(const limitation of c.latest?.limitations||[])group.append(node('p','hint','本次证据限制：'+limitation));
         if(c.latest?.analysis?.message)group.append(node('p','hint',c.latest.analysis.message));
         if(c.latest?.analysis?.error)group.append(node('p','warning','分析原因：'+c.latest.analysis.error));
         else if(c.outcome!=='pass'&&c.latest?.kind==='externally_recorded'&&c.latest.summary){
@@ -50,7 +72,7 @@
       }
       if(t.unknowns?.length)group.append(node('p','hint','仍未知：'+t.unknowns.join('；')));return group;
     }));
-    replace('runs',state.runs.map((r,i)=>{const b=node('button','run'+(r.id===currentId?' selected':''));b.setAttribute('role','listitem');b.setAttribute('aria-pressed',r.id===currentId?'true':'false');b.setAttribute('aria-label',r.label+'，'+runStatus(r));const top=node('span','run-top');top.append(node('span','run-label',String(i+1).padStart(2,'0')+'  '+r.label),node('span','run-status '+colorClass(r),runStatus(r)));b.append(top,node('span','run-note',r.change_note||'未记录修改说明'));b.onclick=()=>{drafts.set(currentId,$('note-text').value);currentId=r.id;datasetId=null;selected=null;$('note-state').textContent='';$('note-text').value=drafts.get(currentId)||'';renderState();};return b;}));
+    replace('runs',state.runs.map((r,i)=>{const b=node('button','run'+(r.id===currentId?' selected':''));b.setAttribute('role','listitem');b.setAttribute('aria-pressed',r.id===currentId?'true':'false');b.setAttribute('aria-label',r.label+'，'+runStatus(r));const top=node('span','run-top');top.append(node('span','run-label',String(i+1).padStart(2,'0')+'  '+r.label),node('span','run-status '+colorClass(r),runStatus(r)));b.append(top,node('span','run-note',r.change_note||'未记录修改说明'));b.onclick=()=>{delete r.field_load_error;drafts.set(currentId,$('note-text').value);currentId=r.id;datasetId=null;selected=null;$('note-state').textContent='';$('note-text').value=drafts.get(currentId)||'';renderState();};return b;}));
     const run=current(), previousBaseline=$('baseline').value;
     replace('dataset',(run?.datasets||[]).map(d=>option(d.id,d.label)));
     if(!run?.datasets.some(d=>d.id===datasetId))datasetId=run?.datasets[0]?.id||null;
@@ -65,6 +87,7 @@
     if(run?.state==='completed'&&!run.events.length)$('events').append(node('li','','历史导入未记录执行阶段；后续 analyze --viewer-session 会记录实际过程。'));
     if(run?.state==='pending')$('events').append(node('li','warning','尚无完成结果；最后记录的阶段不代表进程仍在运行。'));
     renderDetails();renderNotes();updateComparison();const key=currentId+'/'+datasetId+'/'+run?.result_sha256;if(key!==renderedKey){renderer.fit();renderedKey=key;}renderSelection();
+    loadRun(currentId);loadRun($('baseline').value);
   }
   function metric(label,value,unit,sub,bad=false){const m=node('div','metric'),head=node('div','metric-head');const v=node('span','metric-value'+(bad?' bad':''),value);v.append(node('small','',unit));head.append(node('span','metric-name',label),v);m.append(head);if(sub)m.append(node('div','metric-sub',sub));return m;}
   function renderDetails(){
@@ -91,8 +114,9 @@
       renderMotion();
     }
     $('empty').hidden=!!d||!!r?.thermal_display;
-    $('empty').textContent=!r?(noFemTask()?'本轮没有有限元场；已记录的几何／计算检查见下方，实物和强度结论另行核实。':'等待第一份分析结果'):r.error|| (r.state==='pending'?'尚无完成结果。最后阶段：'+(stageNames[r.events.at(-1)?.stage]||r.events.at(-1)?.stage||'准备输入'):'此记录没有可显示的有限元场；请查看判定与覆盖范围。');
+    $('empty').textContent=!r?(noFemTask()?'本轮没有有限元场；已记录的几何／计算检查见下方，实物和强度结论另行核实。':'等待第一份分析结果'):r.error||(r.fields_loaded===false&&r.state==='completed'?(r.field_load_error?'场加载失败；重新选择此版本重试。':'正在按需加载并核验完整场数据…'):(r.state==='pending'?'尚无完成结果。最后阶段：'+(stageNames[r.events.at(-1)?.stage]||r.events.at(-1)?.stage||'准备输入'):'此记录没有可显示的有限元场；请查看判定与覆盖范围。'));
     $('task').textContent=r?(r.case?.provenance?.task_id||s?.task_id||'未提供任务 ID')+(r.analysis==='thermal_solid'?' · 固体传热；温度通过不代表热强度或产品通过。':r.analysis==='thermal_network'?' · 集中参数热网络；区域温度不是三维热点。':r.analysis==='urdf_static'?(r.datasets?.length?' · 机器人任务；可选择连杆查看局部有限元场。':' · 机器人刚体计算；未计算结构强度或刚度。'):' · 声明的静力工况'):noFemTask()?state.tasks[0].task_id+' · 按使用目标选择检查':'等待分析';
+    if(r?.fields_loaded===false)$('task').textContent=(r.case?.provenance?.task_id||s?.task_id||'未提供任务 ID')+' · 结果摘要；完整场与分析范围待载入核验。';
     const metrics=[];
     for(const p of r?.poses||[])for(const probe of (p.task_probe_assessment?.probes||[]))metrics.push(metric(p.name+' / '+probe.name,num(probe.value_mm),'mm','末端总位移，限值 '+num(probe.allowable_displacement_mm)+' mm',probe.utilization>1));
     if(d&&!['thermal','modal'].includes(d.physics)){metrics.push(metric('最大等效应力',num(results.max_von_mises_mpa),'MPa','当前对象积分点峰值，热点未裁剪'));metrics.push(metric('最大节点位移',num(results.max_displacement_mm),'mm',r.analysis==='urdf_static'?'局部连杆场值；不是机器人末端总位移':'当前有限元模型的最大节点位移'));}
@@ -112,13 +136,13 @@
     }
     replace('metrics',metrics);
     const lines=[];
-    lines.push(node('div','evidence-line',noFemTask()?'本轮没有有限元求解；未提供结构强度或刚度结论。':s?.valid_for_comparison?(r?.usage_feedback?.status==='insufficient_evidence'?'原模型数值门槛有效；使用要求证据不足，禁止比较':'分析有效，可在相同任务条件下比较'):'完整性或质量门槛未满足，禁止据此给出有利排名'));
+    lines.push(node('div','evidence-line',r?.fields_loaded===false?'完整场尚未核验，暂不提供有利排名':noFemTask()?'本轮没有有限元求解；未提供结构强度或刚度结论。':s?.valid_for_comparison?(r?.usage_feedback?.status==='insufficient_evidence'?'原模型数值门槛有效；使用要求证据不足，禁止比较':'分析有效，可在相同任务条件下比较'):'完整性或质量门槛未满足，禁止据此给出有利排名'));
     lines.push(node('div','evidence-line',s?.physical_conditions_verified?'输入物理条件已有声明核验，仍非产品验收':'物理条件尚未全部核验'));
     lines.push(node('div','evidence-line','整机 / 安装产品验收：未提供'));
-    if(r?.state==='completed')lines.push(node('div','evidence-line','结果与场文件：本次载入哈希一致'));
+    if(r?.state==='completed')lines.push(node('div','evidence-line',r.fields_loaded===false?'结果摘要已登记；完整场待按需加载核验':'结果与场文件：本次载入哈希一致'));
     if(r?.error)lines.push(node('div','notice',r.error));
     const usageLines=[];
-    if(r?.usage_feedback){
+    if(r?.usage_feedback&&r.fields_loaded!==false){
       const u=r.usage_feedback;
       const statuses={pass_under_stated_model:'本项声明模型通过，仍需实物核验',fail_under_stated_model:'本项声明模型不满足要求',insufficient_evidence:'本项证据不足，不能下结论'};
       const actions={resolve_analysis_or_inputs:'先补充输入或解决计算问题',revise_targeted_design:'针对定位区域提出一个CAD修改假设并复验',keep_and_check_remaining_requirements:'保留本轮设计，继续其余使用要求'};
@@ -130,7 +154,7 @@
       if(Object.keys(u.confirmed_failed_criteria||{}).length)usageLines.push(node('p','gap','已确认不满足的判据：'+Object.keys(u.confirmed_failed_criteria).join('、')));
     }
     replace('usage-summary',usageLines);
-    if(r?.design_context){lines.push(node('h3','','本轮设计检查'),node('p','',r.design_context.question),node('p','gap','模型范围：'+r.design_context.scope),node('p','gap','执行：'+r.design_check_execution.state+' · 总预算 '+num(r.design_check_execution.budget_seconds)+' s · 实际 '+num(r.design_check_execution.elapsed_seconds)+' s'));for(const action of r.design_check_feedback?.next_actions||[])lines.push(node('p','gap',action));}
+    if(r?.design_context){lines.push(node('h3','','本轮设计检查'),node('p','',r.design_context.question),node('p','gap','模型范围：'+r.design_context.scope),node('p','gap','执行：'+r.design_check_execution.state+' · 总预算 '+num(r.design_check_execution.budget_seconds)+' s · 实际 '+num(r.design_check_execution.elapsed_seconds)+' s'));if(r.fields_loaded!==false)for(const action of r.design_check_feedback?.next_actions||[])lines.push(node('p','gap',action));}
     for(const f of s?.feedback||[]){const msg=f.message||JSON.stringify(f),key=msg.startsWith('condition not verified: ')?msg.slice(24):null;lines.push(node('div','gap',key?(conditionNames[key]||key)+'：未核验':(f.scope?f.scope+'：':'')+msg));}
     replace('verification',lines);
     const gaps=[];for(const g of r?.not_assessed||[])gaps.push(node('p','gap',typeof g==='string'?g:JSON.stringify(g)));
@@ -151,7 +175,7 @@
     if($('spatial-hint'))$('spatial-hint').hidden=!d;
     if($('spatial-axes'))$('spatial-axes').hidden=!d;
     $('model').setAttribute('aria-label',r?.analysis==='thermal_network'?'声明区域的温度历程；不是三维热点':'有限元结果，可拖动旋转、滚轮缩放、点击选择区域');
-    $('download-result').disabled=!r;
+    $('download-result').disabled=!r||r.fields_loaded===false;
     const thermal=d?.physics==='thermal',modal=d?.physics==='modal';
     $('modal-tools').hidden=!modal;
     $('deformation').parentElement.hidden=modal;
@@ -254,7 +278,7 @@
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===b.dataset.tab));});
   $('dataset').onchange=()=>{datasetId=$('dataset').value;selected=null;renderDetails();updateComparison();renderer.fit();renderSelection();};
   ['field','deformation','mesh','overlay'].forEach(id=>$(id).onchange=()=>renderer.draw());
-  $('baseline').onchange=()=>{updateComparison();renderer.fit();};
+  $('baseline').onchange=()=>{const r=state.runs.find(r=>r.id===$('baseline').value);if(r)delete r.field_load_error;renderState();renderer.fit();};
   $('reset').onclick=()=>renderer.fit();
   $('modal-mode').onchange=()=>{selected=null;renderer.draw();};
   $('modal-play').onclick=()=>{cancelAnimationFrame(modalFrame);modalPlaying=!modalPlaying;$('modal-play').textContent=modalPlaying?'暂停示意':'播放示意';if(modalPlaying)modalFrame=requestAnimationFrame(animateModal);else{modalPhase=1;renderer.draw();}};
@@ -318,7 +342,7 @@
     select(e){const d=data();if(!d)return;const rect=this.canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;const hit=this.pick.slice().reverse().find(({p})=>{const a=(p[1][0]-x)*(p[2][1]-y)-(p[1][1]-y)*(p[2][0]-x),b=(p[2][0]-x)*(p[0][1]-y)-(p[2][1]-y)*(p[0][0]-x),c=(p[0][0]-x)*(p[1][1]-y)-(p[0][1]-y)*(p[1][0]-x);return Math.abs(a+b+c)>.01&&((a>=0&&b>=0&&c>=0)||(a<=0&&b<=0&&c<=0));});selected=hit?{run_id:currentId,dataset_id:d.id,triangle:hit.i,point:[0,1,2].map(i=>hit.t.reduce((s,n)=>s+d.xyz[n][i],0)/3)}:null;renderSelection();}
   }
   const renderer=new Renderer($('model'));
-  async function refresh(force=false){if(!live||busy)return;busy=true;try{const response=await fetch('/index');if(!response.ok)throw Error('HTTP '+response.status);const index=await response.json();if(force||index.signature!==lastSignature){const response=await fetch('/state');if(!response.ok)throw Error('无法核对证据');state=await response.json();token=state.feedback_token;lastSignature=index.signature;renderState();}$('connection').textContent='已连接 · 阶段记录每 3 秒同步';}catch(e){$('connection').textContent='连接中断 · 保留最近快照';}finally{busy=false;}}
+  async function refresh(force=false){if(!live||busy)return;busy=true;try{const response=await fetch('/index');if(!response.ok)throw Error('HTTP '+response.status);const index=await response.json();if(force||index.signature!==lastSignature){const response=await fetch('/state');if(!response.ok)throw Error('无法核对证据');const next=await response.json();for(const r of next.runs){const old=state.runs.find(v=>v.id===r.id);if(r.state==='completed'&&old?.state==='completed'&&old.fields_loaded&&old.evidence_signature===r.evidence_signature){r.datasets=old.datasets;r.fields_loaded=true;r.status=old.status;r.signal=old.signal;}}state=next;token=state.feedback_token;lastSignature=index.signature;renderState();}$('connection').textContent='已连接 · 阶段记录每 3 秒同步';}catch(e){$('connection').textContent='连接中断 · 保留最近快照';}finally{busy=false;}}
   $('refresh').onclick=()=>live?refresh(true):($('connection').textContent='离线快照 · 启动 view --serve 可核对原文件');
-  renderState();if(live){refresh(true);setInterval(refresh,3000);}else $('connection').textContent='离线快照 · '+new Date(state.exported_at_utc).toLocaleString();
+  renderState();if(live){$('connection').textContent='正在核对并加载证据…';refresh(true);setInterval(refresh,3000);}else $('connection').textContent='离线快照 · '+new Date(state.exported_at_utc).toLocaleString();
 })();

@@ -4,6 +4,8 @@ The caller supplies the mechanical model. Depth never rewrites its physics.
 An owned worker process provides a total wall-clock budget, including meshing.
 """
 from __future__ import annotations
+from .defaults import DEFAULT_EXECUTION_BUDGET
+from .defaults import MAX_WAIT_SECONDS
 
 import copy
 import html
@@ -204,10 +206,10 @@ def write_review(out, review):
         '<h2>设计反馈</h2><pre>' + escape(review['feedback']) + '</pre>', encoding='utf-8')
 
 
-def design_check(case_path, out, *, context_path, depth='design', budget_seconds=600,
+def design_check(case_path, out, *, context_path, depth='design', budget_seconds=DEFAULT_EXECUTION_BUDGET,
                  ccx=None, timeout='auto', preview=True, viewer_session=None,
                  label=None, change_note='', predict_capacity=False, storage='compact',
-                 plan_path=None, check_id=None):
+                 plan_path=None, check_id=None, reuse_levels=None):
     from .retention import validate_storage, retain_output
     validate_storage(storage)
     if depth not in ('design', 'detailed'):
@@ -218,8 +220,8 @@ def design_check(case_path, out, *, context_path, depth='design', budget_seconds
         raise ValueError('predict_capacity must be a boolean')
     automatic_timeout=isinstance(timeout,str) and timeout=='auto'
     for name, value in [('budget_seconds', budget_seconds)]+([] if automatic_timeout else [('timeout', timeout)]):
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 < value <= 86400:
-            raise ValueError(f'{name} must be finite, positive and <=86400 seconds')
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 < value <= MAX_WAIT_SECONDS:
+            raise ValueError(f'{name} must be finite, positive and within the platform wait range')
     case_path, out = Path(case_path).resolve(), Path(out).resolve()
     context_path = Path(context_path).resolve()
     context = read_context(context_path)
@@ -230,6 +232,10 @@ def design_check(case_path, out, *, context_path, depth='design', budget_seconds
         from .use_plan import bind_plan
         usage = bind_plan(plan_path, check_id, case_path)
     case = json.loads(case_path.read_text(encoding='utf-8-sig'))
+    if reuse_levels is not None:
+        from .api import check_case
+        from .level_cache import validate_request
+        validate_request(check_case(case_path), reuse_levels, out)
     if usage and case.get('schema_version') in ('thermal-network-1.0', 'thermal-solid-1.0', 'modal-solid-1.0', 'motion-loads-1.0', 'fatigue-data-1.0', 'creep-data-1.0'):
         from .use_plan import validate_computation
         validate_computation(usage['check'], case)
@@ -269,6 +275,8 @@ def design_check(case_path, out, *, context_path, depth='design', budget_seconds
     command = [sys.executable, worker_entry(),
                'analyze', str(case_path), '--out', str(out / 'analysis'),
                '--timeout', str(budget_seconds if automatic_timeout else min(timeout, budget_seconds)), '--storage', 'full']
+    if reuse_levels is not None:
+        command += ['--reuse-levels', str(Path(reuse_levels).resolve())]
     if not predict_capacity:
         command += ['--no-capacity']
     if ccx:
@@ -332,6 +340,11 @@ def design_check(case_path, out, *, context_path, depth='design', budget_seconds
     review['execution'] = {'state': state, 'budget_seconds': budget_seconds,
         'elapsed_seconds': elapsed, 'worker_started': True, 'worker_pid': process.pid,
         'worker_returncode': process.returncode, 'command': command}
+    if state in ('budget_exhausted','analysis_failed'):
+        review['execution']['recovery']={'code':state,'retryable_unchanged':False,
+            'next_action':'review_budget_and_completed_stages' if state=='budget_exhausted' else 'inspect_retained_diagnostics',
+            'fields':['budget_seconds'] if state=='budget_exhausted' else [],
+            'details':{'worker_log':str(out/'worker.stderr.log')}}
     if result_read_error:
         review['execution']['result_read_error'] = result_read_error
     events = []

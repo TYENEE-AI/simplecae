@@ -1,4 +1,5 @@
 """Geometry classes and agent-loop verification, with explicit analytic scope."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from .paths import resource_root
 from pathlib import Path
 import copy
@@ -58,7 +59,7 @@ def generate_general(out):
     return specs
 
 
-def validate_general(out,ccx=None,timeout=300):
+def validate_general(out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT):
     out=Path(out);out.mkdir(parents=True,exist_ok=False);inputs=out/'inputs';specs=generate_general(inputs)
     checks=[];results={}
     def check(name,passed,**kw):checks.append({'name':name,'passed':bool(passed),**kw})

@@ -173,8 +173,13 @@ def validate_case(c,*,allow_unloaded=False):
         raise ValueError("at least three mesh sizes are required")
     for h in sizes:
         number(h, "mesh size", True)
-    if any(b / a > 0.8 for a, b in zip(sizes, sizes[1:])):
-        raise ValueError("mesh sizes must decrease by at least 20% at every level")
+    # A generated 3 * .8 can round one ULP above the exact ratio.
+    # Admit representation roundoff, not a physically coarser refinement.
+    if any(b / a > math.nextafter(0.8, math.inf) for a, b in zip(sizes, sizes[1:])):
+        suggested = [sizes[0] * .8**i for i in range(len(sizes))]
+        raise ValueError("mesh sizes must decrease by at least 20% at every level; "
+                         f"received {sizes}. For example use {suggested} mm, "
+                         "then review the element/time budget. Input was not changed.")
     for field in ("displacement_relative_tolerance", "stress_relative_tolerance", "balance_relative_tolerance"):
         if field in mesh and not 0 < number(mesh[field], field) < 1:
             raise ValueError(f"{field} must be in (0, 1)")

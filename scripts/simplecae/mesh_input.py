@@ -108,8 +108,9 @@ def load_surface(model):
         mesh.apply_transform([[1,0,0,0],[0,0,-1,0],[0,1,0,0],[0,0,0,1]])
     elif source_up!='z':
         raise ValueError("source_up_axis must be y or z")
-    if not len(mesh.faces) or len(mesh.faces)>100000 or not np.all(np.isfinite(mesh.vertices)):
-        raise ValueError("mesh must have finite vertices and 1..100000 triangles")
+    from .defaults import DEFAULT_INPUT_TRIANGLES
+    if not len(mesh.faces) or len(mesh.faces)>DEFAULT_INPUT_TRIANGLES or not np.all(np.isfinite(mesh.vertices)):
+        raise ValueError(f"mesh must have finite vertices and 1..{DEFAULT_INPUT_TRIANGLES} triangles")
     old_count=len(mesh.vertices)
     # Weld coincident tessellation vertices only; do not fill or alter surfaces.
     mesh.merge_vertices(digits_vertex=12)
@@ -118,7 +119,10 @@ def load_surface(model):
     if not mesh.is_watertight or not mesh.is_winding_consistent:
         raise ValueError("surface must be closed with consistent face winding; no implicit repair")
     if len(mesh.split(only_watertight=False))!=1:
-        raise ValueError("selected occurrence contains disconnected shells; use explicit solid bodies")
+        raise ValueError("selected occurrence contains disconnected shells; use explicit solid bodies. "
+                         "scene_node cannot split a flattened multi-part occurrence. Export separate parts, "
+                         "or inspect the original STEP with --all-bodies and select a source-bound solid_id. "
+                         "No implicit fusion or shell selection was performed.")
     if not np.isfinite(mesh.volume) or abs(mesh.volume)<1e-12:
         raise ValueError("surface encloses no positive volume")
     flipped=mesh.volume<0

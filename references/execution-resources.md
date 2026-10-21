@@ -1,15 +1,87 @@
 # Resource-aware execution without changing engineering acceptance
 
+`task run` additionally persists a cumulative branch allowance across checks and `task start --continue-from` revisions. `--budget-seconds` limits one worker; `--total-budget-seconds` sets the branch allowance on first execution. Revising that allowance later requires `--budget-reason`. The controller reserves before launch and charges measured execution/reporting time afterwards; final report/retention overhead can exceed the worker deadline and reduce the next attempt's allowance. See [agent-tasks.md](agent-tasks.md) for interruption and safe continuation. Standalone `design-check` has a per-run deadline, not a cross-workspace ledger.
+
+## Retained-evidence advice
+
+Default execution allowances are centralized in `scripts/simplecae/defaults.py`:
+
+| Setting | Default | Override |
+|---|---:|---|
+| Task/design worker wall budget | 3000 s | `--budget-seconds` |
+| Direct native solve timeout | 3000 s | `--timeout` |
+| Structural/combined assembly elements | 500000 | `mesh.max_elements` |
+| Solid thermal elements | 100000 | `mesh.max_elements` |
+| Modal elements | 20000 | `mesh.max_elements` (no former 10000 schema ceiling) |
+| Thermal retained field values | 30000000 | `mesh.max_field_values` |
+| Display triangles | 250000 | `preview --max-triangles` |
+| Imported surface triangles | 250000 | Bounded input guard; use source STEP for larger tessellations |
+| Viewer file / expanded NPZ | 256 MiB | Shared structural, thermal and modal display guard |
+| Advice planning headroom | 50% | Advisory, never an execution/accuracy gate |
+
+Explicit existing case limits and task ledgers remain unchanged. Higher defaults
+are planning room, not a promise that a machine can hold every allowed problem.
+Finite positive timeouts use the platform's wait range rather than an arbitrary
+24-hour ceiling. Keep deadlines finite. Do not inflate a user's explicit limit.
+The 15-second owned-process termination wait is cleanup, not a solver cutoff.
+Contact increment and quadrature caps remain computational guards: they do not
+shorten the Agent wall budget, and increasing them without a contact study can
+increase solve cost substantially. Calibration tolerances remain physics checks.
+Source hashes, equilibrium, valid elements, contact signs and convergence gates
+are unchanged. Preview coarsening attempts stay bounded and fall back to geometry
+bounds; increasing retry counts would delay useful feedback without proving a mesh.
+
+`advise CASE.json --evidence ANALYSIS_DIRECTORY --out FRESH.advice.json` returns
+source-bound local-mesh and resource proposals without editing inputs or starting
+retries. It accepts a result.json or a narrow analysis/mesh directory containing
+mesh/resource diagnostics. Changed CAD hashes are rejected. For rejected curved
+faces (or a nonconverged peak neighborhood), geometry requests h/2 or one quarter
+of the measured face extent. Observed element counts and the declared budget can
+limit that refinement: a tiny trimmed face must not imply an unbounded group-wide
+mesh. `sizing_estimate` retains both the requested factor and the cost estimate.
+If even the unrefined finest mesh exceeds that planning budget, a
+`mesh_budget_conflict` replaces the sizing entry. These are trial heuristics,
+not convergence or cost guarantees. `assembly_cost_coverage` sums observed bodies
+and lists unobserved ones; a missing body keeps the total unknown. Local proposals
+reserve headroom for observed other bodies against the combined assembly cap.
+Merge entries with existing local sizing, retaining
+stronger settings. A model-validity failure is not automatically a mesh problem.
+If native high-order optimization fails without a located inverted element,
+`location_basis` explicitly labels a broader trial over that body's curved faces;
+it does not identify a defect or turn positive Jacobians into accepted numerics.
+
+Element advice extrapolates observed counts to the finest requested h using
+cubic scaling and 50% planning headroom. Field-budget advice uses actual retained
+field counts. Same-run node/time observations reuse the existing cost projection.
+All predictions are advisory and may underpredict. `execution-observation.json`
+records actual stage intervals, total wall time, worker CPU and parent-process
+high-water memory; solver-child peak remains explicitly unknown. Thermal stages
+are emitted as well. `advise` includes this evidence and a same-workload planning
+range, not a statistical confidence interval or a promise for changed meshes.
+Native-only projections still exclude meshing/postprocessing, and available RAM
+is not a sparse-matrix memory estimate.
+The output never changes accuracy, loads or materials, and never retries. Once
+numerics are resolved (whether design pass or fail), it stops suggesting mesh
+repairs; unresolved cases without a located repair require inspection.
+
 Use `doctor` to inspect logical CPUs and available/total memory. Missing memory
 information is unknown, not zero. Core count alone does not predict sparse matrix
 fill, contact overlay cost, operating-system load or solver thread safety.
+
+`doctor.runtime_identity` identifies the active package/resource paths and Skill
+hash; compare it to the intended checkout before assuming another task uses these
+defaults. This does not install or upgrade another Skill copy.
+
+`mesh-policy CASE.json`, task briefs and `advise` expose the physics-specific
+mesh count/ratio contract, declared tolerances and a legal example. These are
+planning diagnostics; no coarse-only result inherits converged acceptance.
 
 `task run` / `design-check` now default to `--timeout auto`. This shares the
 chosen `--budget-seconds` across the whole worker: meshing, all stages and mesh
 levels. The supervisor still terminates owned processes at that deadline. It
 does not extend a user cap or declare progress to be convergence. A numeric
 `--timeout` still adds a strict per-native-job cap. Direct `analyze` retains its
-numeric timeout. Default total budget is 600 seconds, a configurable starting
+numeric timeout. Default total budget is 3000 seconds, a configurable starting
 point, not a universal CAE allowance.
 
 Before a structural solve, `level-*/execution-plan.json` gives a rough native

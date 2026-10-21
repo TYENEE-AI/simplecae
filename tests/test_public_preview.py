@@ -43,7 +43,7 @@ def test_public_receipt_binds_complete_sources_and_rejects_private_validation(pu
     with pytest.raises(ValueError,match='unexpected validation history'):check_public_qualification(root,__version__)
 
 
-@pytest.mark.parametrize('change',['README.md','LICENSE','added','removed'])
+@pytest.mark.parametrize('change',['README.md','validation/README.md','LICENSE','added','removed'])
 def test_public_receipt_rejects_changed_or_incomplete_source_set(public_source,change):
     root,receipt=public_source
     if change=='added':(root/'scripts/extra.py').write_text('extra')

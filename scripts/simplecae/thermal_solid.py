@@ -1,5 +1,7 @@
 """Bounded linear single-solid conduction with spatial/time qualification."""
 from __future__ import annotations
+from .defaults import DEFAULT_NATIVE_TIMEOUT
+from .defaults import DEFAULT_THERMAL_ELEMENTS, DEFAULT_THERMAL_FIELD_VALUES
 
 import copy
 import html
@@ -35,7 +37,8 @@ def schema():
              "position_mm": N, "tolerance_mm": P}, ("type", "axis", "position_mm")),
         obj({"type": {"const": "face_ids"}, "ids": dict(arr({"type": "integer", "minimum": 1}, 1), uniqueItems=True),
              "geometry_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
-            ("type", "ids", "geometry_sha256"))]}
+            ("type", "ids", "geometry_sha256")),
+        obj({"type":{"const":"interface"},"name":S}, ("type","name"))]}
     base = {"name": S, "target": S, "basis": S, "selector": selector}
     boundaries = []
     for kind, fields in (
@@ -50,9 +53,13 @@ def schema():
     criterion = obj({"id": S, "target": S, "region": region,
                      "min_temperature_c": temp, "max_temperature_c": temp}, ("id", "target", "region"))
     criterion["anyOf"] = [{"required": ["min_temperature_c"]}, {"required": ["max_temperature_c"]}]
+    local_refinement = obj({"name": S, "selector": selector,
+        "size_factor": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "distance_mm": P, "sampling": {"type": "integer", "minimum": 10, "maximum": 500}},
+        ("name", "selector", "size_factor", "distance_mm"))
     return obj({
         "schema_version": {"const": SCHEMA}, "mode": enum("steady", "transient"),
-        "model": obj({"path": S, "units": {"const": "mm"},
+        "model": obj({"path": S, "units": {"const": "mm"}, "interface_manifest":S,
                       "expected_bbox_mm": dict(arr(V, 2), maxItems=2)}, ("path", "units", "expected_bbox_mm")),
         "material": obj({"name": S, "basis": S, "conductivity_w_mk": P, "density_kg_m3": P,
                          "specific_heat_j_kgk": P, "temperature_range_c": dict(arr(temp, 2), maxItems=2)},
@@ -61,8 +68,12 @@ def schema():
         "volumetric_heat_w_m3": N, "initial_temperature_c": temp, "duration_s": P,
         "time_steps": {"type": "integer", "minimum": 4, "maximum": 200},
         "mesh": obj({"sizes_mm": dict(arr(P, 3), maxItems=3),
-                     "max_elements": {"type": "integer", "minimum": 1, "maximum": 20000},
+                     "max_elements": {"type": "integer", "minimum": 1},
+                     "max_field_values": {"type": "integer", "minimum": 1},
+                     "local_refinements": arr(local_refinement),
                      "preserve_boundary_nodes": B}, ("sizes_mm",)),
+        "accuracy": obj({"temperature_tolerance_c": P, "basis": S},
+                        ("temperature_tolerance_c", "basis")),
         "criteria": dict(arr(criterion, 1), maxItems=32),
         "assumptions": arr(S, 1), "not_assessed": arr(S),
         "conditions": obj({"properties_verified": B, "boundaries_verified": B},
@@ -93,10 +104,19 @@ def read_case(path):
     if model.suffix.lower() not in (".step", ".stp") or not model.is_file():
         raise ValueError("Solid thermal analysis requires an existing STEP single solid")
     case["model"]["path"] = str(model)
+    if 'interface_manifest' in case['model']:
+        manifest = (path.parent/Path(case['model']['interface_manifest'])).resolve()
+        if not manifest.is_file(): raise ValueError('interface_manifest does not exist')
+        case['model']['interface_manifest'] = str(manifest)
     sizes = case["mesh"]["sizes_mm"]
-    case["mesh"].setdefault("max_elements", 20000)
-    if any(not .35 <= b/a <= .85 for a, b in zip(sizes, sizes[1:])):
+    case["mesh"].setdefault("max_elements", DEFAULT_THERMAL_ELEMENTS)
+    if any(not math.nextafter(.35, -math.inf) <= b/a <= math.nextafter(.85, math.inf)
+           for a, b in zip(sizes, sizes[1:])):
         raise ValueError("Three mesh sizes require successive ratios in [0.35, 0.85]")
+    from .local_mesh import validate_refinements
+    validate_refinements(case["mesh"])
+    if "accuracy" in case and not case["accuracy"]["basis"].strip():
+        raise ValueError("Temperature accuracy needs a nonempty task-specific basis")
     lo, hi = case["material"]["temperature_range_c"]
     if lo >= hi:
         raise ValueError("Material temperature range must increase")
@@ -110,6 +130,9 @@ def read_case(path):
         if c.get("min_temperature_c", -273.15) > c.get("max_temperature_c", math.inf):
             raise ValueError("Contradictory temperature criterion")
     transient = case["mode"] == "transient"
+    if not transient and not any(b['type'] in ('temperature','convection') for b in case['boundaries']):
+        raise ValueError('Steady conduction requires a temperature reference or convection heat path before meshing; '
+                         'mechanical fixation is not a thermal sink. Supply the actual heat boundary or use an explicitly justified transient model.')
     if transient:
         if not {"initial_temperature_c", "duration_s", "time_steps"} <= case.keys():
             raise ValueError("Transient analysis requires initial temperature, duration and time_steps")
@@ -124,6 +147,7 @@ def read_case(path):
 
 
 def contract(case, realized_inputs):
+    from .region_rules import region_contract
     value = copy.deepcopy(case)
     value.pop("mesh", None)
     value.pop("time_steps", None)
@@ -132,15 +156,47 @@ def contract(case, realized_inputs):
     # Specified power survives permitted CAD edits. For prescribed flux/body
     # generation, changed total power is a changed task, not a cooling success.
     value["realized_heat_input_w"] = realized_inputs
-    return value
+    return value | region_contract(case)
 
 
-def _level(case, directory, h, steps, ccx, timeout):
+def accuracy_policy(case):
+    """Explicit task accuracy; defaults preserve historical strict evidence.
+
+    Refinement differences are an engineering screen, not a proven error bound.
+    A wider requested tolerance also widens the undecidable decision band.
+    Numerical validity/energy/geometry gates never depend on this choice.
+    """
+    spec = case.get("accuracy")
+    if spec is None:
+        return {"spatial_tolerance_c": SPACE_TOLERANCE_C,
+                "time_tolerance_c": TIME_TOLERANCE_C, "criterion_guard_c": GUARD_C}
+    if not isinstance(spec, dict) or not isinstance(spec.get('basis'), str) or not spec['basis'].strip():
+        raise ValueError("Temperature accuracy needs a nonempty task-specific basis")
+    tol = spec.get("temperature_tolerance_c")
+    if isinstance(tol, bool) or not isinstance(tol, (int, float)) or not math.isfinite(tol) or tol <= 0:
+        raise ValueError("Temperature accuracy must be finite and positive")
+    guard = max(GUARD_C, 2*tol+1e-5)
+    if not math.isfinite(guard):
+        raise ValueError("Temperature accuracy exceeds finite numerical range")
+    return {"spatial_tolerance_c": tol, "time_tolerance_c": tol,
+            "criterion_guard_c": guard}
+
+
+def _level(case, directory, h, steps, ccx, timeout, progress=None):
+    from .progress import emit
+    emit(progress,'mesh',mesh_size_mm=h)
     directory.mkdir()
     mesh = make_mesh(case, h, directory, allow_free_body=True)
     count = steps if steps else 1
-    if (2*len(mesh[0])+12*len(mesh[1]))*(count+1) > 6_000_000:
-        raise ValueError("Thermal field budget exceeded; select a smaller target or explicitly reduce spatial/time scope")
+    field_values = (2*len(mesh[0])+12*len(mesh[1]))*(count+1)
+    field_budget = case["mesh"].get("max_field_values", DEFAULT_THERMAL_FIELD_VALUES)
+    if field_values > field_budget:
+        write_json(directory/'resource-diagnostic.json', {'stage':'field_budget','status':'rejected',
+            'geometry_sha256':mesh[-1]['geometry']['geometry_sha256'],'mesh_size_mm':h,
+            'field_value_count':field_values,'max_field_values':field_budget})
+        raise ValueError(f"Thermal field budget exceeded: {field_values} values > mesh.max_field_values={field_budget}; "
+                         "choose local mesh allocation or an explicit resource budget after reviewing available memory; "
+                         "do not drop required regions or time samples")
     patches, fixed = native.compile_boundaries(case, mesh, directory)
     for p in patches.values():
         if p["type"] == "heat_power":
@@ -148,7 +204,9 @@ def _level(case, directory, h, steps, ccx, timeout):
     deck = directory/"thermal.inp"
     native.write_deck(case, mesh, patches, fixed, deck, steps)
     from .solver import execute
+    emit(progress,'thermal',mesh_size_mm=h)
     solver = execute(ccx, deck, timeout=timeout, analysis_type="thermal")
+    emit(progress,'postprocess',mesh_size_mm=h)
     times = np.arange(1, steps+1)*case["duration_s"]/steps if steps else np.array([1.])
     frames = native.parse_fields(deck.with_suffix(".dat"), mesh[0], mesh[1], times)
     boundary_error = max([abs(f["temperature_c"][n]-t) for _, f in frames for n, t in fixed.items()] + [0.])
@@ -205,9 +263,11 @@ def _level(case, directory, h, steps, ccx, timeout):
                  +e["reservoir_exchange_scale_w"]+abs(e["storage_rate_w"]) for e in energy] + [0.])
     tolerance = 1e-7+1e-5*scale  # Native DAT has seven significant digits.
     errors = {key: max(abs(e[key]) for e in energy) for key in (
-        "balance_error_w", "max_free_node_residual_w", "max_conductive_field_residual_w")}
+        "balance_error_w", "max_free_node_residual_w", "max_conductive_field_excess_w")}
     volume = mesh[-1]["mesh_volume_mm3"]*1e-9
-    quadrature_error = max(e["independent_volume_integration_difference_m3"] for e in energy)/volume
+    volume_quadrature_error = max(e["independent_volume_integration_difference_m3"] for e in energy)/volume
+    surface_quadrature_error = max((p['surface_quadrature_relative_error'] for p in patches.values()),default=0.)
+    quadrature_error = max(volume_quadrature_error,surface_quadrature_error)
     realized = {p["name"]: float(f"{p['flux_w_m2']*p['area_m2']:.8g}")
                 for p in patches.values() if p["type"] == "heat_flux" and "total_heat_w" not in p}
     if case.get("volumetric_heat_w_m3"):
@@ -219,13 +279,19 @@ def _level(case, directory, h, steps, ccx, timeout):
             "boundary_temperature_tolerance_c": boundary_tolerance,
             "boundary_temperature_passed": boundary_error <= boundary_tolerance,
             "quadrature_relative_error": quadrature_error, "quadrature_passed": quadrature_error <= .001,
+            "volume_quadrature_relative_error":volume_quadrature_error,
+            "surface_quadrature_relative_error":surface_quadrature_error,
             "realized_inputs": realized, "steps": steps, "time_s": times.tolist(),
             "prescribed_temperatures_in_regions": prescribed,
+            "field_value_count": field_values, "field_value_budget": field_budget,
             "patches": [{k: v for k, v in p.items() if k not in ("face_mass_m2", "node_weights_m2", "element_sides")}
                         for p in patches.values()]}
 
 
 def _assess(case, levels, time_differences):
+    policy = accuracy_policy(case)
+    space_tol, time_tol, guard = (policy[k] for k in
+        ("spatial_tolerance_c", "time_tolerance_c", "criterion_guard_c"))
     spatial = []
     for a, b in zip(levels[:3], levels[1:3]):
         spatial.append(max(abs(x[k]-y[k]) for name in a["histories"]
@@ -237,11 +303,11 @@ def _assess(case, levels, time_differences):
         "energy_balance_passed": all(x["energy_passed"] for x in levels),
         "boundary_temperature_passed": all(x["boundary_temperature_passed"] for x in levels),
         "quadrature_passed": all(x["quadrature_passed"] for x in levels),
-        "spatial_refinement_passed": len(spatial) == 2 and max(spatial) <= SPACE_TOLERANCE_C,
-        "spatial_extrema_differences_c": spatial, "spatial_tolerance_c": SPACE_TOLERANCE_C,
+        "spatial_refinement_passed": len(spatial) == 2 and max(spatial) <= space_tol,
+        "spatial_extrema_differences_c": spatial, "spatial_tolerance_c": space_tol,
         "time_refinement_passed": (case["mode"] == "steady" or
-            len(time_differences) == 2 and max(time_differences) <= TIME_TOLERANCE_C),
-        "time_field_differences_c": time_differences, "time_tolerance_c": TIME_TOLERANCE_C,
+            len(time_differences) == 2 and max(time_differences) <= time_tol),
+        "time_field_differences_c": time_differences, "time_tolerance_c": time_tol,
         "property_range_passed": all(lo <= h["min_temperature_c"] and h["max_temperature_c"] <= hi
                                      for h in all_extrema)}
     valid = all(v for k, v in verification.items() if k.endswith("_passed"))
@@ -254,10 +320,10 @@ def _assess(case, levels, time_differences):
         upper_margin = c.get("max_temperature_c", math.inf)-hot["max_temperature_c"]
         margin = min(lower_margin, upper_margin)
         bound, governing = ("min", cold) if lower_margin < upper_margin else ("max", hot)
-        resolved = valid and abs(margin) > GUARD_C
+        resolved = valid and abs(margin) > guard
         conflicts = [p for p in levels[0].get("prescribed_temperatures_in_regions", {}).get(c["id"], [])
-                     if (c.get("min_temperature_c", -math.inf)-p["temperature_c"] > GUARD_C
-                         or p["temperature_c"]-c.get("max_temperature_c", math.inf) > GUARD_C)]
+                     if (c.get("min_temperature_c", -math.inf)-p["temperature_c"] > guard
+                         or p["temperature_c"]-c.get("max_temperature_c", math.inf) > guard)]
         criteria[c["id"]] = dict(c, min_temperature_c=cold["min_temperature_c"],
             max_temperature_c=hot["max_temperature_c"], margin_c=margin,
             limits_c={k: c[k] for k in ("min_temperature_c", "max_temperature_c") if k in c},
@@ -279,11 +345,12 @@ def _assess(case, levels, time_differences):
     return status, verification, criteria
 
 
-def analyze(path, out, ccx=None, timeout=300):
+def analyze(path, out, ccx=None, timeout=DEFAULT_NATIVE_TIMEOUT, *, progress=None):
     from .solver import find_ccx
     path, out = Path(path).resolve(), Path(out).resolve()
     case = read_case(path)
-    source = {str(p): sha256(p) for p in (path, Path(case["model"]["path"]))}
+    from .sources import source_paths
+    source = {str(p): sha256(p) for p in source_paths(case) | {path}}
     out.mkdir(parents=True, exist_ok=False)
     write_json(out/"input.json", case)
     shutil.copyfile(case["model"]["path"], out/"input.step")
@@ -293,19 +360,18 @@ def analyze(path, out, ccx=None, timeout=300):
     result["method"] = {"name": "CalculiX C3D10 linear conduction",
                         "implementation_sha256": {name: sha256(Path(__file__).with_name(name)) for name in (
                             "thermal_solid.py", "thermal_solid_solver.py", "thermal_fields.py", "geometry.py", "solver.py")},
-                        "spatial_tolerance_c": SPACE_TOLERANCE_C, "time_tolerance_c": TIME_TOLERANCE_C,
-                        "criterion_guard_c": GUARD_C}
+                        **accuracy_policy(case)}
     try:
         executable = find_ccx(ccx)
         steps = case.get("time_steps")
         for i, h in enumerate(case["mesh"]["sizes_mm"]):
             result["levels"].append(_level(case, out/f"mesh-{i+1}", h,
-                                            steps*4 if steps else None, executable, timeout))
+                                            steps*4 if steps else None, executable, timeout,progress))
         differences = []
         if steps:
             for factor in (1, 2):
                 result["levels"].append(_level(case, out/f"time-{factor}", case["mesh"]["sizes_mm"][-1],
-                                                steps*factor, executable, timeout))
+                                                steps*factor, executable, timeout,progress))
             # Same Gmsh geometry/configuration must actually yield identical nodes.
             fine = result["levels"][2]
             ordered = [result["levels"][3], result["levels"][4], fine]
@@ -343,6 +409,10 @@ def signal(result):
     case = result.get("case", {})
     valid = result.get("status") in ("pass_under_stated_model", "fail_under_stated_model")
     error = result.get("error")
+    try:
+        decision_guard = accuracy_policy(case)["criterion_guard_c"]
+    except (KeyError, TypeError, ValueError) as exc:
+        valid, error, decision_guard = False, str(exc), None
     if valid:
         expected = digest({k: v for k, v in result.items() if k not in ("evidence_sha256", "evaluation_signal")})
         try:
@@ -350,6 +420,11 @@ def signal(result):
                 raise ValueError("Thermal evidence summary changed or is incomplete")
             if any(sha256(Path(p)) != h for p, h in result["evidence_files"].items()):
                 raise ValueError("Thermal fields or mesh evidence changed")
+            if case['model'].get('interface_manifest'):
+                if any(sha256(Path(p)) != h for p,h in result['source'].items()):
+                    raise ValueError('Thermal region source changed')
+                if result['task_contract'] != contract(case, result['levels'][0]['realized_inputs']):
+                    raise ValueError('Thermal region contract changed')
             status, verification, criteria = _assess(case, result["levels"],
                 result["verification"]["time_field_differences_c"])
             if (status, verification, criteria) != (
@@ -384,7 +459,7 @@ def signal(result):
             for bound in ("min", "max"):
                 limit = c["limits_c"].get(f"{bound}_temperature_c")
                 value = c[f"{bound}_temperature_c"]
-                if limit is None or (limit-value if bound == "min" else value-limit) <= GUARD_C:
+                if limit is None or (limit-value if bound == "min" else value-limit) <= decision_guard:
                     continue
                 direction = ("Trace excessive heat loss or insufficient heat delivery at this cold region. "
                              "Consider a permitted reduction of heat loss or a better path from an existing heat source; "
@@ -400,6 +475,14 @@ def signal(result):
                                "Preserve power, ambient/reservoir conditions, duration and temperature limits; "
                                "check interfaces and reanalyze. Pointwise heat flux is diagnostic, not an acceptance criterion."})
     if not valid:
+        for cid, criterion in criteria.items():
+            if decision_guard is not None and abs(criterion.get("margin_c", math.inf)) <= decision_guard:
+                findings.append({"kind":"numerical_resolution", "criterion_id":cid,
+                    "margin_c":criterion["margin_c"], "criterion_guard_c":decision_guard,
+                    "message":"Temperature margin is inside the declared numerical decision guard; "
+                              "no pass or CAD weakness is established. If this close decision matters, "
+                              "declare a justified tighter accuracy in a fresh task and resolve the mesh/time error "
+                              "within its budget. Do not widen the tolerance to obtain a pass."})
         explanations = {
             "energy_balance_passed": "热量或节点场残差未通过；先检查边界、单位和原生输出。",
             "boundary_temperature_passed": "计算温度与给定恒温边界不符；先修复分析。",
@@ -418,6 +501,7 @@ def signal(result):
         "valid_for_comparison": bool(valid),
         "feasible_under_stated_model": (result["status"] == "pass_under_stated_model") if valid else None,
         "physical_conditions_verified": False, "whole_installation_rating_available": False,
+        "whole_product_pass_available": False,
         "task_contract_sha256": digest(result.get("task_contract", case)),
         "task_id": case.get("provenance", {}).get("task_id"), "candidate": case.get("provenance", {}),
         "utilizations": {}, "bottleneck_margin": None, "conditional_limit": None,
@@ -457,8 +541,9 @@ def viewer_dataset(path, result):
         raise ValueError("Thermal Viewer fields must stay inside the result directory")
     for name in ("mesh.npz", "thermal-fields.npz"):
         with zipfile.ZipFile(directory/name) as archive:
-            if sum(x.file_size for x in archive.infolist()) > 128*1024**2:
-                raise ValueError("Thermal display evidence exceeds 128 MiB expanded")
+            from .defaults import DEFAULT_VIEWER_FILE_BYTES
+            if sum(x.file_size for x in archive.infolist()) > DEFAULT_VIEWER_FILE_BYTES:
+                raise ValueError(f"Thermal display evidence exceeds {DEFAULT_VIEWER_FILE_BYTES//1024**2} MiB expanded")
     with np.load(directory/"mesh.npz", allow_pickle=False) as mesh, \
          np.load(directory/"thermal-fields.npz", allow_pickle=False) as field:
         if any(not np.isfinite(field[k]).all() for k in field.files):

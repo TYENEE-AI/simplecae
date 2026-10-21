@@ -1,5 +1,18 @@
 # Partial opening and native contact convergence
 
+An assembly may be driven solely by nonzero `supports[].service_displacement_mm`
+through the existing staged contact backend. Do not add a fictitious force to
+satisfy an input check. With no applied force or preload, equilibrium uses half
+the sum of fixture-reaction magnitudes as its force scale, recorded in the native
+result; a missing reaction path cannot pass. Full force/moment residuals, contact
+sign, field coverage and small-response gates still apply. A prescribed motion
+outside the model's validity calls for another applicable model, not endless
+mesh refinement, altered stiffness or invented supports.
+
+Native STEP cylinder/cone/sphere/torus connection faces are rejected during input
+validation before volume meshing. This early rejection does not replace the later
+coplanarity, trimmed-footprint and quadratic-mesh projection checks.
+
 This is a numerical control for declared planar contact, not a contact material property or a product allowable. It applies to both matching and CAD-contained footprints.
 
 CalculiX 2.23 face-to-face static contact selects active springs, solves and updates the displacement. Its default `delcon=0.001` allows a small relative change in active contact count at convergence. The native linear spring evaluates pressure as `p = -kn * clearance` on the current active set. Some springs can open during the final update and still appear with negative pressure in the printed field. This is not adhesive contact and is not grounds for clipping the output.

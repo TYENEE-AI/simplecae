@@ -1,4 +1,5 @@
 """Compile, preview and analyze required gripper endpoints in one file workflow."""
+from .defaults import DEFAULT_NATIVE_TIMEOUT
 from pathlib import Path
 import json
 from .case import write_json,sha256
@@ -13,7 +14,7 @@ def family_status(cases,contact_loss=False):
     return 'pass_under_stated_model'
 
 
-def analyze_gripper_task(path,out,*,ccx=None,timeout=300,preview=True,progress=None,cache=None,reuse_levels=None,include_nominal=False,ledger=None,storage='compact'):
+def analyze_gripper_task(path,out,*,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT,preview=True,progress=None,cache=None,reuse_levels=None,include_nominal=False,ledger=None,storage='compact'):
     from .retention import validate_storage
     validate_storage(storage)
     from .api import analyze_case,check_case,check_gripper_task
