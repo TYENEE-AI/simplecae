@@ -1,0 +1,12 @@
+{
+  "question": "Declared planar mounting and locked axial preload",
+  "assumptions": [
+    "铝合金等效假设E=69000 MPa, nu=0.33, yield=240 MPa；批次数据未实测"
+  ],
+  "not_assessed": [
+    "实际预紧和摩擦",
+    "螺栓局部承压/疲劳及机架柔度",
+    "装配振动实测"
+  ],
+  "scope": "Full stated planar contact and axial preload model with R0.8 root transitions; generic stress_regions checks apply at all three stage endpoints."
+}

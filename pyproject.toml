@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simplecae-toolkit"
+version = "1.6.0"
+description = "Use-driven engineering checks and CAD/robot iteration with explicit evidence"
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+classifiers = ["Development Status :: 4 - Beta", "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"]
+dependencies = ["gmsh==4.15.2", "numpy>=1.26,<3", "matplotlib>=3.8,<4", "scipy>=1.13,<2", "trimesh>=4.5,<6", "meshio>=5,<6", "defusedxml>=0.7,<1", "jsonschema>=4,<5", "manifold3d>=3,<4"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10", "PyYAML>=6,<7"]
+
+[project.scripts]
+simplecae = "simplecae.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["scripts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["scripts"]

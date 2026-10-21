@@ -1,0 +1,12 @@
+{
+  "question": "Does this geometry meet the unchanged 200 N beam task, and what should the CAD agent change next?",
+  "scope": "Short-term linear elastic beam with the declared ideal clamp. Compare geometry revisions only.",
+  "assumptions": [
+    "Prescribed mathematical material and rigid fixture; neither is physically verified.",
+    "Uniform end-face force and small elastic response represent this reference task."
+  ],
+  "not_assessed": [
+    "Actual fasteners, mounting failure and physical manufacturing variability.",
+    "Contact/preload, buckling, fatigue, impact and creep."
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SimpleCAE result envelope",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "analysis",
+    "status",
+    "case",
+    "evaluation_signal"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "1.0",
+        "2.0",
+        "assembly-1.0",
+        "robot-result-1.0",
+        "thermal-network-result-1.0",
+        "thermal-solid-result-1.0",
+        "modal-solid-result-1.0",
+        "motion-loads-result-1.0",
+        "fatigue-data-result-1.0",
+        "creep-data-result-1.0"
+      ]
+    },
+    "analysis": {
+      "enum": [
+        "linear_static",
+        "linear_static_assembly",
+        "load_case_envelope",
+        "urdf_static",
+        "frictionless_contact_assembly",
+        "staged_contact_assembly",
+        "thermal_network",
+        "thermal_solid",
+        "modal",
+        "motion_loads",
+        "fatigue_data",
+        "creep_data"
+      ]
+    },
+    "status": {
+      "enum": [
+        "invalid",
+        "indeterminate",
+        "fail_under_stated_model",
+        "pass_under_stated_model"
+      ]
+    },
+    "case": {
+      "type": "object"
+    },
+    "evaluation_signal": {
+      "type": "object"
+    },
+    "error": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "invalid"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error"
+        ]
+      }
+    }
+  ]
+}

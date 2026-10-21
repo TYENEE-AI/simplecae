@@ -1,0 +1,76 @@
+{
+  "schema_version": "robot-1.0",
+  "model": {
+    "path": "one-link.urdf"
+  },
+  "poses": [
+    {
+      "name": "extended",
+      "joints": {
+        "shoulder": 0.0
+      }
+    },
+    {
+      "name": "diagonal",
+      "joints": {
+        "shoulder": 0.7853981633974483
+      }
+    },
+    {
+      "name": "upright",
+      "joints": {
+        "shoulder": 1.5707963267948966
+      }
+    }
+  ],
+  "gravity_m_s2": [
+    0,
+    0,
+    -9.80665
+  ],
+  "payloads": [
+    {
+      "name": "tool",
+      "link": "arm",
+      "mass_kg": 2.0,
+      "center_m": [
+        0.1,
+        0,
+        0
+      ]
+    }
+  ],
+  "base": {
+    "type": "fixed"
+  },
+  "effort_safety_factor": 1.5,
+  "conditions": {
+    "inertials_verified": true,
+    "actuator_ratings_verified": true,
+    "mount_verified": true,
+    "poses_verified": true
+  },
+  "components": [
+    {
+      "link": "arm",
+      "case_path": "arm.component.json",
+      "ports": {
+        "tool": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 100
+        }
+      }
+    }
+  ],
+  "required_components": [
+    "arm"
+  ],
+  "provenance": {
+    "generator": "cadgen",
+    "task_id": "arm-static-reference",
+    "model_id": "cadgen-arm",
+    "revision": "base"
+  },
+  "notes": "Prescribed mathematical URDF/CAD/motor reference, not a physical motor or robot rating."
+}

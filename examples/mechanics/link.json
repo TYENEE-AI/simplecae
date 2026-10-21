@@ -1,0 +1,63 @@
+{
+  "schema_version": "2.0",
+  "model": {
+    "path": "../assemblies/half-bar.step"
+  },
+  "material": {
+    "name": "prescribed_reference",
+    "source": "Mathematical steel-like reference, not certified component data",
+    "youngs_modulus_mpa": 200000.0,
+    "poisson_ratio": 0.0,
+    "yield_strength_mpa": 200.0,
+    "failure_criterion": "von_mises_yield",
+    "calibration": {
+      "kind": "mathematical_reference",
+      "reference": "Prescribed elastic/yield constants",
+      "applicability": "Numerical verification only; no physical material qualification"
+    },
+    "density_kg_m3": 7800.0
+  },
+  "supports": [
+    {
+      "name": "upstream",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0
+      }
+    }
+  ],
+  "loads": [
+    {
+      "name": "template",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 50
+      },
+      "total_force_n": [
+        0,
+        0,
+        -1
+      ]
+    }
+  ],
+  "criteria": {
+    "strength_safety_factor": 2.0,
+    "max_displacement_mm": 0.1
+  },
+  "mesh": {
+    "sizes_mm": [
+      5.0,
+      4.0,
+      3.0
+    ]
+  },
+  "conditions": {
+    "material_verified": true,
+    "dimensions_verified": true,
+    "supports_represent_actual_mounting": true,
+    "load_pattern_verified": true,
+    "self_weight_negligible": true
+  }
+}

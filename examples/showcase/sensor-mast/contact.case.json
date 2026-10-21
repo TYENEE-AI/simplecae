@@ -1,0 +1,349 @@
+{
+  "schema_version": "assembly-1.0",
+  "bodies": [
+    {
+      "name": "base",
+      "model": {
+        "path": "base.step"
+      },
+      "material": {
+        "name": "Assumed aluminum equivalent",
+        "youngs_modulus_mpa": 69000.0,
+        "poisson_ratio": 0.33,
+        "yield_strength_mpa": 240.0,
+        "density_kg_m3": 2700.0,
+        "failure_criterion": "von_mises_yield",
+        "source": "Explicit simulated-user screening constants; no actual batch certification."
+      },
+      "local_refinements": [
+        {
+          "name": "curved-cad-faces",
+          "selector": {
+            "type": "face_ids",
+            "ids": [
+              7,
+              8,
+              9,
+              10
+            ],
+            "geometry_sha256": "ba22772e42ebdddd59d054907519c193f0a1ed5b5d460092ac49123b90d6e191"
+          },
+          "size_factor": 0.5,
+          "distance_mm": 1.5
+        }
+      ]
+    },
+    {
+      "name": "mast",
+      "model": {
+        "path": "mast.step"
+      },
+      "material": {
+        "name": "Assumed aluminum equivalent",
+        "youngs_modulus_mpa": 69000.0,
+        "poisson_ratio": 0.33,
+        "yield_strength_mpa": 240.0,
+        "density_kg_m3": 2700.0,
+        "failure_criterion": "von_mises_yield",
+        "source": "Explicit simulated-user screening constants; no actual batch certification."
+      },
+      "placement": {
+        "translation_mm": [
+          0.0,
+          0.0,
+          8.0
+        ],
+        "rpy_rad": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "local_refinements": [
+        {
+          "name": "curved-cad-faces",
+          "selector": {
+            "type": "face_ids",
+            "ids": [
+              19,
+              20,
+              25,
+              26
+            ],
+            "geometry_sha256": "1e6f9f9e9510f1afd6998e7f7920a9106f108f9ee12e24b523bbff8281963afd"
+          },
+          "size_factor": 0.5,
+          "distance_mm": 1.5
+        },
+        {
+          "name": "root-fillet",
+          "selector": {
+            "type": "face_ids",
+            "ids": [
+              3,
+              7,
+              9,
+              14
+            ],
+            "geometry_sha256": "1e6f9f9e9510f1afd6998e7f7920a9106f108f9ee12e24b523bbff8281963afd"
+          },
+          "size_factor": 0.08,
+          "distance_mm": 1.5
+        },
+        {
+          "name": "bolt-boss-edge",
+          "selector": {
+            "type": "face_ids",
+            "ids": [
+              19,
+              20
+            ],
+            "geometry_sha256": "1e6f9f9e9510f1afd6998e7f7920a9106f108f9ee12e24b523bbff8281963afd"
+          },
+          "size_factor": 0.25,
+          "distance_mm": 2.0
+        }
+      ]
+    }
+  ],
+  "supports": [
+    {
+      "name": "frame",
+      "body": "base",
+      "selector": {
+        "type": "plane",
+        "axis": "z",
+        "position_mm": 0.0
+      }
+    }
+  ],
+  "loads": [
+    {
+      "name": "sensor",
+      "body": "mast",
+      "selector": {
+        "type": "plane",
+        "axis": "z",
+        "position_mm": 110.0
+      },
+      "total_force_n": [
+        0.0,
+        5.0,
+        -50.0
+      ]
+    }
+  ],
+  "gravity": {
+    "acceleration_m_s2": [
+      0.0,
+      0.0,
+      -9.81
+    ]
+  },
+  "connections": [
+    {
+      "name": "foot",
+      "type": "frictional_contact",
+      "master": {
+        "body": "base",
+        "selector": {
+          "type": "plane",
+          "axis": "z",
+          "position_mm": 8.0
+        }
+      },
+      "slave": {
+        "body": "mast",
+        "selector": {
+          "type": "plane",
+          "axis": "z",
+          "position_mm": 0.0
+        }
+      },
+      "normal": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "footprint": "slave_within_master",
+      "normal_stiffness_n_mm3": 100000.0,
+      "tangential_stiffness_n_mm3": 10000.0,
+      "friction_coefficient": 0.2,
+      "max_tangential_displacement_mm": 0.05,
+      "calibration": {
+        "reference": "Explicit penalty model kn=1e5, kt=1e4 N/mm3 and assumed mu=.2",
+        "applicability": "Small-sliding planar screen only, not measured interface behavior"
+      }
+    }
+  ],
+  "bolts": [
+    {
+      "name": "bolt_0",
+      "master": {
+        "body": "base",
+        "selector": {
+          "type": "face_ids",
+          "ids": [
+            11
+          ],
+          "geometry_sha256": "ba22772e42ebdddd59d054907519c193f0a1ed5b5d460092ac49123b90d6e191"
+        }
+      },
+      "slave": {
+        "body": "mast",
+        "selector": {
+          "type": "face_ids",
+          "ids": [
+            23
+          ],
+          "geometry_sha256": "1e6f9f9e9510f1afd6998e7f7920a9106f108f9ee12e24b523bbff8281963afd"
+        }
+      },
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "axial_stiffness_n_mm": 117000.0,
+      "preload_n": 300.0,
+      "allowable_tension_n": 1500.0,
+      "reference": "Simulated M5 axial spring: E200000MPa*A14.2mm2/L24.3mm≈117000N/mm; declared300N preload and1500N axial screening allowance. No torque/grade/pullout claim."
+    },
+    {
+      "name": "bolt_1",
+      "master": {
+        "body": "base",
+        "selector": {
+          "type": "face_ids",
+          "ids": [
+            12
+          ],
+          "geometry_sha256": "ba22772e42ebdddd59d054907519c193f0a1ed5b5d460092ac49123b90d6e191"
+        }
+      },
+      "slave": {
+        "body": "mast",
+        "selector": {
+          "type": "face_ids",
+          "ids": [
+            24
+          ],
+          "geometry_sha256": "1e6f9f9e9510f1afd6998e7f7920a9106f108f9ee12e24b523bbff8281963afd"
+        }
+      },
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "axial_stiffness_n_mm": 117000.0,
+      "preload_n": 300.0,
+      "allowable_tension_n": 1500.0,
+      "reference": "Simulated M5 axial spring: E200000MPa*A14.2mm2/L24.3mm≈117000N/mm; declared300N preload and1500N axial screening allowance. No torque/grade/pullout claim."
+    }
+  ],
+  "criteria": {
+    "strength_safety_factor": 2.0,
+    "max_displacement_mm": 0.3
+  },
+  "mesh": {
+    "sizes_mm": [
+      6.0,
+      4.5,
+      3.3
+    ],
+    "max_elements": 20000,
+    "preserve_boundary_nodes": true
+  },
+  "conditions": {
+    "material_verified": false,
+    "dimensions_verified": false,
+    "supports_represent_actual_mounting": false,
+    "load_pattern_verified": false,
+    "self_weight_negligible": false,
+    "connection_parameters_verified": false
+  },
+  "provenance": {
+    "task_id": "s02_sensor_mast",
+    "revision": "r2-fillet"
+  },
+  "notes": "Two axial bolt substitutes with locked pretension; omitted shank bearing, threads and real frame flexibility. No fictitious tangential guides.",
+  "contact_control": {
+    "initial_increment": 1.0,
+    "maximum_increment": 1.0,
+    "service_initial_increment": 1.0,
+    "service_maximum_increment": 1.0
+  },
+  "stress_regions": [
+    {
+      "name": "root_all",
+      "body": "mast",
+      "min_mm": [
+        -10,
+        -5,
+        12
+      ],
+      "max_mm": [
+        10,
+        5,
+        18
+      ]
+    },
+    {
+      "name": "root_x_minus",
+      "body": "mast",
+      "min_mm": [
+        -9,
+        -4,
+        13
+      ],
+      "max_mm": [
+        -7,
+        4,
+        16
+      ]
+    },
+    {
+      "name": "root_x_plus",
+      "body": "mast",
+      "min_mm": [
+        7,
+        -4,
+        13
+      ],
+      "max_mm": [
+        9,
+        4,
+        16
+      ]
+    },
+    {
+      "name": "root_y_minus",
+      "body": "mast",
+      "min_mm": [
+        -9,
+        -4,
+        13
+      ],
+      "max_mm": [
+        9,
+        -2,
+        16
+      ]
+    },
+    {
+      "name": "root_y_plus",
+      "body": "mast",
+      "min_mm": [
+        -9,
+        2,
+        13
+      ],
+      "max_mm": [
+        9,
+        4,
+        16
+      ]
+    }
+  ]
+}

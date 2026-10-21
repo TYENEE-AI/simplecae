@@ -1,0 +1,119 @@
+{
+  "schema_version": "assembly-1.0",
+  "bodies": [
+    {
+      "name": "left",
+      "model": {
+        "path": "half-bar.step"
+      },
+      "material": {
+        "name": "prescribed_reference",
+        "source": "Mathematical steel-like reference, not certified component data",
+        "youngs_modulus_mpa": 200000.0,
+        "poisson_ratio": 0.0,
+        "yield_strength_mpa": 200.0,
+        "failure_criterion": "von_mises_yield"
+      }
+    },
+    {
+      "name": "right",
+      "model": {
+        "path": "half-bar.step"
+      },
+      "material": {
+        "name": "prescribed_reference",
+        "source": "Mathematical steel-like reference, not certified component data",
+        "youngs_modulus_mpa": 100000.0,
+        "poisson_ratio": 0.0,
+        "yield_strength_mpa": 30.0,
+        "failure_criterion": "von_mises_yield"
+      },
+      "placement": {
+        "translation_mm": [
+          50,
+          0,
+          0
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "mesh_size_factor": 0.8
+    }
+  ],
+  "supports": [
+    {
+      "name": "clamp",
+      "body": "left",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0
+      }
+    }
+  ],
+  "loads": [
+    {
+      "name": "end",
+      "body": "right",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 50
+      },
+      "total_force_n": [
+        1000,
+        0,
+        0
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "name": "joint",
+      "type": "bonded",
+      "master": {
+        "body": "left",
+        "selector": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 50
+        }
+      },
+      "slave": {
+        "body": "right",
+        "selector": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 0
+        }
+      }
+    }
+  ],
+  "criteria": {
+    "strength_safety_factor": 2.0,
+    "max_displacement_mm": 0.1
+  },
+  "mesh": {
+    "sizes_mm": [
+      5,
+      4,
+      3
+    ]
+  },
+  "conditions": {
+    "material_verified": true,
+    "dimensions_verified": true,
+    "supports_represent_actual_mounting": true,
+    "load_pattern_verified": true,
+    "self_weight_negligible": true,
+    "connection_parameters_verified": true
+  },
+  "provenance": {
+    "task_id": "assembly-reference",
+    "revision": "base"
+  },
+  "notes": "Independent nonmatching meshes, no implicit fusion."
+}

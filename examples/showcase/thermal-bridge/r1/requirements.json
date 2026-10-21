@@ -1,0 +1,41 @@
+{
+  "id": "s03_heat_bridge",
+  "role": "高校机械专业学生，设计移动机器人控制板导热支座",
+  "need": "导热桥把5 W传到20°C理想冷端，主体最高温度不超过40°C；温度不等于热应力或触摸安全",
+  "parts": [
+    "开孔安装底板",
+    "导热桥",
+    "控制板及发热器包络",
+    "保护盖"
+  ],
+  "dimensions_mm": {
+    "bridge_length": 40,
+    "bridge_width": 20,
+    "initial_bridge_thickness": 2,
+    "allowed_bridge_thickness_max": 4
+  },
+  "material": "常导热系数167 W/(m K)的铝等效筛查假设；物性范围0–120°C",
+  "criteria": {
+    "total_heat_w": 5,
+    "reservoir_temperature_c": 20,
+    "maximum_temperature_c": 40
+  },
+  "checks": [
+    "mounting/clearance geometry",
+    "thermal resistance network",
+    "targeted solid steady temperature and flux-scope limits",
+    "transient network warmup"
+  ],
+  "permitted_edit": "仅改变导热截面，固定功率、材料、冷端温度和40°C上限；真实热接触缺失时保留待办",
+  "validation": [
+    "correct heat-source and sink faces",
+    "independent resistance estimate",
+    "three-mesh energy and temperature checks",
+    "no pointwise-flux or hot-strength approval"
+  ],
+  "physical_pending": [
+    "热接触阻力",
+    "冷端温度及环境",
+    "实物温升和触摸安全"
+  ]
+}

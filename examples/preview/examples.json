@@ -1,0 +1,22 @@
+{
+  "pass": {
+    "case": "pass.case.json",
+    "expected_status": "pass_under_stated_model",
+    "meaning": "100 N, declared strength and 0.3 mm displacement criteria pass numerically. No physical qualification."
+  },
+  "fail": {
+    "case": "fail.case.json",
+    "expected_status": "fail_under_stated_model",
+    "meaning": "200 N, same strength and 0.3 mm criteria: converged displacement exceeds its limit."
+  },
+  "indeterminate": {
+    "case": "indeterminate.case.json",
+    "expected_status": "indeterminate",
+    "meaning": "100 N elastic solution, but strength data/failure criterion missing. Do not rank or issue capacity."
+  },
+  "iteration": {
+    "case": "iteration.case.json",
+    "expected_status": "pass_under_stated_model",
+    "meaning": "200 N, width increased from 10 to 20 mm; same task physics and criteria as fail. Numerical improvement only."
+  }
+}

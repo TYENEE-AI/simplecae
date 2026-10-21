@@ -1,0 +1,30 @@
+{
+  "schema_version":"gripper-task-1.0",
+  "task_id": "DECLARED_GRIP_QUICKSTART_A",
+  "model_path": "gripper.urdf",
+  "poses": [
+    {"name":"gap32","joints":{"slide":0.008}},
+    {"name":"gap20","joints":{"slide":0.020}},
+    {"name":"gap8","joints":{"slide":0.032}}
+  ],
+  "contacts": [
+    {"link":"fixed_finger","position_m":[0,0.002,0.035],"normal_link":[-1,0,0],
+     "pad":{"center_link_m":[0,0,0.035],"tangent_u_link":[0,1,0],"tangent_v_link":[0,0,1],"half_extents_m":[0.008,0.008]}},
+    {"link":"moving_finger","position_m":[0,0.002,0.035],"normal_link":[1,0,0],
+     "pad":{"center_link_m":[0,0,0.035],"tangent_u_link":[0,1,0],"tangent_v_link":[0,0,1],"half_extents_m":[0.008,0.008]}}
+  ],
+  "payload_mass_kg":0.25,
+  "normal_force_per_finger_n":16,
+  "force_measurement":{"measured_hold_interval_n":[15,17],"absolute_error_n":2,"error_verified":false,"holding_window_verified":false},
+  "friction_coefficient":0.3,
+  "acceleration_along_gravity_m_s2":2,
+  "slip_safety_factor":2,
+  "effort_safety_factor":1.5,
+  "grasp_model":"finite_pad_wrench",
+  "pad_wrench_mode":"declared_per_pad",
+  "grasp_conditions":{"friction_verified":false,"force_verified":false,"pad_contact_verified":false},
+  "conditions":{"inertials_verified":false,"actuator_ratings_verified":false,"mount_verified":false,"poses_verified":false},
+  "components":[],"required_components":[],
+  "actuation_reactions":[{"name":"drive","joint":"slide","driven":{"link":"moving_finger","point_link_m":[0,0,0]},"reaction":{"link":"base","point_link_m":[0.065,0,0]},"verified":false}],
+  "notes":"Mathematical first-use example with URDF box visuals and declared inertials/ratings. No component FEM, real sensor calibration, pad test, transmission model, manufacturing or hardware proof. The source task has no product payload rating. Add actual component CAD/material/support ports before structural conclusions."
+}

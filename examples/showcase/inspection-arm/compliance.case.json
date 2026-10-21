@@ -1,0 +1,119 @@
+{
+  "schema_version": "robot-1.0",
+  "model": {
+    "path": "robot.urdf"
+  },
+  "poses": [
+    {
+      "name": "straight",
+      "joints": {
+        "shoulder": 0.0,
+        "elbow": 0.0
+      }
+    },
+    {
+      "name": "raised",
+      "joints": {
+        "shoulder": -0.3,
+        "elbow": 0.5
+      }
+    }
+  ],
+  "gravity_m_s2": [
+    0.0,
+    0.0,
+    -9.81
+  ],
+  "base": {
+    "type": "fixed"
+  },
+  "conditions": {
+    "inertials_verified": false,
+    "actuator_ratings_verified": false,
+    "mount_verified": false,
+    "poses_verified": false
+  },
+  "effort_safety_factor": 1.0,
+  "effort_limits": {
+    "shoulder": 2.0,
+    "elbow": 2.0
+  },
+  "components": [
+    {
+      "link": "first",
+      "case_path": "first.case.json",
+      "ports": {
+        "elbow": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 180.0
+        }
+      }
+    },
+    {
+      "link": "second",
+      "case_path": "second.case.json",
+      "ports": {
+        "tool_mount": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 140.0
+        }
+      }
+    }
+  ],
+  "required_components": [
+    "first",
+    "second"
+  ],
+  "probes": [
+    {
+      "name": "tip",
+      "type": "surface_average",
+      "link": "second",
+      "component_selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 140.0
+      },
+      "direction": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "max_displacement_mm": 0.5
+    }
+  ],
+  "elastic_transfer": {
+    "rigid_links": [
+      "base",
+      "tool",
+      "payload"
+    ],
+    "rigid_joints": [
+      "tool_mount",
+      "payload_mount"
+    ],
+    "joints_locked_verified": false,
+    "max_rotation_rad": 0.01,
+    "max_section_warping_mm": 0.001,
+    "reference": "Fixed base, unloaded held poses; controller gravity compensation omitted, small first-order transfer.",
+    "joint_compliance": {
+      "shoulder": {
+        "rotational_stiffness_n_m_rad": 200.0,
+        "verified": false,
+        "reference": "Explicit simulated-user output-side held stiffness, excluding modeled link flexibility; not measured."
+      },
+      "elbow": {
+        "rotational_stiffness_n_m_rad": 80.0,
+        "verified": false,
+        "reference": "Explicit simulated-user output-side held stiffness, excluding modeled link flexibility; not measured."
+      }
+    }
+  },
+  "provenance": {
+    "task_id": "s04_inspection_arm",
+    "revision": "r1"
+  },
+  "notes": "CAD-derived assumed-density inertials, separate0.2kg payload inertia assumption. No trajectory or controller qualification."
+}

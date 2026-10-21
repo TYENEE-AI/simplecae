@@ -1,0 +1,75 @@
+{
+  "schema_version": "2.0",
+  "model": {
+    "path": "column.step",
+    "expected_bbox_mm": [
+      [
+        0,
+        -5,
+        -5
+      ],
+      [
+        300,
+        5,
+        5
+      ]
+    ]
+  },
+  "material": {
+    "name": "analytic_isotropic_reference",
+    "youngs_modulus_mpa": 200000.0,
+    "poisson_ratio": 0.3,
+    "yield_strength_mpa": 200.0,
+    "failure_criterion": "von_mises_yield",
+    "source": "Prescribed mathematical benchmark parameters; not a material certificate."
+  },
+  "supports": [
+    {
+      "name": "clamp",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0.0
+      }
+    }
+  ],
+  "loads": [
+    {
+      "name": "end_face",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 300.0
+      },
+      "total_force_n": [
+        -100.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "criteria": {
+    "yield_safety_factor": 2.0,
+    "max_displacement_mm": 0.3
+  },
+  "mesh": {
+    "sizes_mm": [
+      5.0,
+      4.0,
+      3.0
+    ]
+  },
+  "conditions": {
+    "material_verified": true,
+    "dimensions_verified": true,
+    "supports_represent_actual_mounting": true,
+    "load_pattern_verified": true,
+    "self_weight_negligible": true
+  },
+  "notes": "Euler cantilever-column verification, Pcr=pi^2 E I/(4L^2), not a physical rated load.",
+  "buckling": {
+    "enabled": true,
+    "modes": 3,
+    "safety_factor": 2.0
+  }
+}

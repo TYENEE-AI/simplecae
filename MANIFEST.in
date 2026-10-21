@@ -1,0 +1,7 @@
+recursive-include assets *
+recursive-include examples *
+recursive-include licenses *
+include LICENSE NOTICE.md
+global-exclude *.pyc *.pyo
+prune assets/__pycache__
+prune examples/__pycache__

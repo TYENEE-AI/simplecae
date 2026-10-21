@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "model": {
+    "path": "bracket.step",
+    "expected_bbox_mm": [
+      [
+        0,
+        -10,
+        0
+      ],
+      [
+        44,
+        10,
+        44
+      ]
+    ]
+  },
+  "material": {
+    "name": "assumed_aluminum_example",
+    "youngs_modulus_mpa": 69000.0,
+    "poisson_ratio": 0.33,
+    "yield_strength_mpa": 200.0,
+    "failure_criterion": "von_mises_yield",
+    "source": "Illustrative assumed values; replace with verified material data."
+  },
+  "supports": [
+    {
+      "name": "ideal_back_clamp",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0.0
+      }
+    }
+  ],
+  "loads": [
+    {
+      "name": "shelf_traction",
+      "selector": {
+        "type": "plane",
+        "axis": "z",
+        "position_mm": 4.0
+      },
+      "total_force_n": [
+        0.0,
+        0.0,
+        -50.0
+      ]
+    }
+  ],
+  "criteria": {
+    "yield_safety_factor": 2.0,
+    "max_displacement_mm": 0.2
+  },
+  "mesh": {
+    "sizes_mm": [
+      3.0,
+      2.4,
+      1.8
+    ]
+  },
+  "conditions": {
+    "material_verified": false,
+    "dimensions_verified": true,
+    "supports_represent_actual_mounting": false,
+    "load_pattern_verified": false,
+    "self_weight_negligible": true
+  },
+  "notes": "Illustrative rounded L-bracket with ideal full-back support and uniform shelf traction. Actual mounting and material not supplied; capacity must be withheld."
+}

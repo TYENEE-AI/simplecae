@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "simplecae-task-family-1.0"
+    },
+    "toolkit_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_task_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{64}$"
+    },
+    "source_files_sha256": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-fA-F]{64}$"
+      }
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "case_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "case_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$"
+          },
+          "case_relative_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "normal_force_per_finger_n": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "analysis_required": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "not_run",
+              "invalid",
+              "indeterminate",
+              "fail_under_stated_model",
+              "pass_under_stated_model"
+            ]
+          },
+          "result_relative_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "report_relative_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "preview_relative_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "valid_for_comparison": {
+            "type": "boolean"
+          },
+          "physical_conditions_verified": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "name",
+          "case_path",
+          "case_sha256",
+          "case_relative_path",
+          "normal_force_per_finger_n",
+          "analysis_required",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "whole_product_rating_available": {
+      "const": false
+    },
+    "conditional_product_capacity_available": {
+      "const": false
+    },
+    "comparison_margin": {
+      "type": "null"
+    },
+    "known_failures": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 0
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "invalid",
+        "indeterminate",
+        "fail_under_stated_model",
+        "pass_under_stated_model"
+      ]
+    },
+    "error": {
+      "type": "string",
+      "minLength": 1
+    },
+    "force_budget": {
+      "type": "object"
+    },
+    "force_envelope_relative_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "application_relative_path": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "toolkit_version",
+    "source_task",
+    "source_task_sha256",
+    "cases",
+    "whole_product_rating_available",
+    "conditional_product_capacity_available",
+    "comparison_margin",
+    "known_failures",
+    "scope",
+    "status"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "invalid"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": "thermal-network-1.0",
+  "mode": "steady",
+  "nodes": [
+    {"id": "hot", "target": "Prescribed hot-side reservoir", "basis": "Constant 100 C mathematical boundary"},
+    {"id": "body", "target": "Protected region average temperature", "basis": "Lumped analytical reference, not a measured printed component"},
+    {"id": "ambient", "target": "Prescribed cold-side reservoir", "basis": "Constant 20 C mathematical boundary"}
+  ],
+  "links": [
+    {"id": "incoming", "type": "resistance", "a": "hot", "b": "body", "resistance_k_w": 2, "target": "Incoming heat path", "basis": "Exact series resistance benchmark"},
+    {"id": "outgoing", "type": "resistance", "a": "body", "b": "ambient", "resistance_k_w": 3, "target": "Heat-rejection path", "basis": "Exact series resistance benchmark"}
+  ],
+  "fixed_temperature_c": {"hot": 100, "ambient": 20},
+  "heat_w": {},
+  "criteria": [{"id": "region-temperature", "node": "body", "max_temperature_c": 70}],
+  "property_temperature_range_c": [-100, 200],
+  "assumptions": ["Linear lumped mathematical network; constants are reference values, not measured material or contact data"],
+  "not_assessed": ["Spatial hot spots", "Real temperature and material applicability", "Hot strength and creep"],
+  "conditions": {"properties_verified": false, "boundaries_verified": false, "lumping_verified": false},
+  "provenance": {"task_id": "thermal-network-reference", "revision": "reference-1"}
+}

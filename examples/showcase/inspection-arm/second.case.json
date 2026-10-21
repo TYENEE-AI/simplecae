@@ -1,0 +1,77 @@
+{
+  "schema_version": "2.0",
+  "model": {
+    "path": "second.step",
+    "expected_bbox_mm": [
+      [
+        0.0,
+        -12.0,
+        0.0
+      ],
+      [
+        140.0,
+        12.0,
+        8.0
+      ]
+    ]
+  },
+  "material": {
+    "name": "Assumed aluminum equivalent",
+    "youngs_modulus_mpa": 69000.0,
+    "poisson_ratio": 0.33,
+    "yield_strength_mpa": 240.0,
+    "density_kg_m3": 2700.0,
+    "failure_criterion": "von_mises_yield",
+    "source": "Explicit simulated-user screening constants; no actual batch certification."
+  },
+  "supports": [
+    {
+      "name": "upstream",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0.0
+      }
+    }
+  ],
+  "loads": [
+    {
+      "name": "template",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 140.0
+      },
+      "total_force_n": [
+        0.0,
+        0.0,
+        -1.0
+      ]
+    }
+  ],
+  "criteria": {
+    "strength_safety_factor": 2.0,
+    "max_displacement_mm": 0.5
+  },
+  "mesh": {
+    "sizes_mm": [
+      8.0,
+      6.0,
+      4.5
+    ],
+    "max_elements": 20000,
+    "preserve_boundary_nodes": true
+  },
+  "conditions": {
+    "material_verified": false,
+    "dimensions_verified": false,
+    "supports_represent_actual_mounting": false,
+    "load_pattern_verified": false,
+    "self_weight_negligible": false
+  },
+  "provenance": {
+    "task_id": "s04_inspection_arm",
+    "revision": "r1"
+  },
+  "notes": "Scenario screening only; assumed material/mounting. Physical validation remains pending."
+}

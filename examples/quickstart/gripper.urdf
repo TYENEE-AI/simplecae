@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<robot name="declared_parallel_gripper_example">
+  <!-- SI metres, mathematical masses/ratings, box visuals only; no FEM here. -->
+  <link name="base">
+    <inertial><origin xyz=".03 0 -.003"/><mass value=".02"/><inertia ixx=".000001" iyy=".000006" izz=".000006" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz=".03 0 -.003"/><geometry><box size=".07 .028 .006"/></geometry></visual>
+  </link>
+  <link name="fixed_finger">
+    <inertial><origin xyz="-.0015 0 .025"/><mass value=".00648"/><inertia ixx=".00000148824" iyy=".00000135486" izz=".00000014310" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="-.0015 0 .025"/><geometry><box size=".003 .016 .05"/></geometry></visual>
+  </link>
+  <joint name="fixed_mount" type="fixed"><parent link="base"/><child link="fixed_finger"/></joint>
+  <link name="moving_finger">
+    <inertial><origin xyz=".0015 0 .025"/><mass value=".00648"/><inertia ixx=".00000148824" iyy=".00000135486" izz=".00000014310" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz=".0015 0 .025"/><geometry><box size=".003 .016 .05"/></geometry></visual>
+  </link>
+  <joint name="slide" type="prismatic"><parent link="base"/><child link="moving_finger"/><origin xyz=".04 0 0"/><axis xyz="-1 0 0"/><limit lower="0" upper=".034" effort="42" velocity=".01"/></joint>
+</robot>

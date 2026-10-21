@@ -1,0 +1,13 @@
+{
+  "schema_version": "simplecae-use-plan-1.0",
+  "task_id": "manual-motion-prototype",
+  "request": "制作一个PLA、FDM打印、手动操作的桌面机构，用来观察运动。未指定堵转扭矩或耐久额定值。",
+  "scenarios": [{"id": "play", "use": "握住底座，轻转旋钮，观察输出运动", "success": "能装配、低阻力转动完整周期，运动关系正确，不擦碰"}],
+  "checks": [
+    {"id": "motion-fit", "scenario": "play", "question": "真实齿形、轴套和轴向堆叠能否装入并转动？", "user_impact": "卡滞或装不进去会直接影响把玩", "method": "geometry", "decision": "now", "targets": ["啮合副", "转轴和止推界面", "紧固件插入路径"], "reason": "当前交付是运动原型，先用CAD检查名义装配和运动；不对每个零件启动FEM", "required_for_claim": true, "acceptance": "明确采样范围内无非预期干涉，插入路径成立，堆叠有正间隙；实际打印配合另试", "assumptions": ["CAD名义尺寸，无制造误差"], "not_assessed": ["最坏公差组合", "实际摩擦与手感"]},
+    {"id": "print-fit", "scenario": "play", "question": "实际打印后的孔轴和齿面配合是否顺畅？", "user_impact": "名义CAD无干涉仍可能因象脚或孔缩小而卡住", "method": "physical_test", "decision": "now", "targets": ["配合试片", "代表性运动副"], "reason": "少量试打印比未标定摩擦仿真更直接", "required_for_claim": true, "acceptance": "记录材料、打印设置和尺寸，低阻力完整试转无卡滞", "assumptions": [], "not_assessed": ["长期磨损与疲劳"]},
+    {"id": "stall-strength", "scenario": "play", "question": "堵转时是否满足规定的静载要求？", "user_impact": "过力拧动可能损伤齿根或轴，但当前没有额定堵转需求", "method": "fem", "decision": "later", "targets": ["控制啮合的齿根", "轴及其反力路径"], "reason": "先确认是否需要堵转强度指标及其依据；Agent提出的参考扭矩不能自动变成用户需求", "required_for_claim": false, "acceptance": "另行明确扭矩、材料适用性和判据后才评价；当前不声明强度通过", "assumptions": ["正常用途为低阻力手动演示"], "not_assessed": ["堵转额定值", "疲劳", "冲击"]}
+  ],
+  "unknowns": ["打印机的实际孔轴误差", "实际操作手感与摩擦"],
+  "iteration_constraints": ["保留用户选定的PLA和FDM工艺", "保持所需运动关系和可拆装性", "不得把跳过强度分析写成承载通过"]
+}

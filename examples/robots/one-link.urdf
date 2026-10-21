@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- Design ledger: SI metres, radians, kilograms. Static mathematical reference.
+ Base box 0.16 x 0.12 x 0.03 m, 2 kg, COM z=0.02 m; box inertias m*(b^2+c^2)/12.
+ Arm is the actual cadgen 100 x 10 x 10 mm export, homogeneous density 7800 kg/m^3,
+ mass 0.078 kg, COM x=0.05 m, Ixx=m*(0.01^2+0.01^2)/12,
+ Iyy=Izz=m*(0.10^2+0.01^2)/12. These are prescribed reference data, not a material certificate.
+ Shoulder origin z=0.05 m, axis -Y so positive angle lifts +X toward +Z.
+ Arm component frame is its link frame; fixed upstream port is x=0, payload port x=0.10 m.
+ Visual STL is in mm; explicit 0.001 scale converts it to URDF metres. Collision box is SI.
+ Fixed-base holding and declared ground contacts are separate case assumptions. -->
+<robot name="simplecae_cadgen_arm">
+  <link name="base">
+    <inertial><origin xyz="0 0 0.02"/><mass value="2"/><inertia ixx="0.00255" iyy="0.004416666666666667" izz="0.006666666666666667" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0.02"/><geometry><box size="0.16 0.12 0.03"/></geometry></visual>
+    <collision><origin xyz="0 0 0.02"/><geometry><box size="0.16 0.12 0.03"/></geometry></collision>
+  </link>
+  <link name="arm">
+    <inertial><origin xyz="0.05 0 0"/><mass value="0.078"/><inertia ixx="0.0000013" iyy="0.00006565" izz="0.00006565" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><geometry><mesh filename="assets/cadgen-beam.stl" scale="0.001 0.001 0.001"/></geometry></visual>
+    <collision><origin xyz="0.05 0 0"/><geometry><box size="0.1 0.01 0.01"/></geometry></collision>
+  </link>
+  <joint name="shoulder" type="revolute"><parent link="base"/><child link="arm"/><origin xyz="0 0 0.05"/><axis xyz="0 -1 0"/><limit lower="-3.141592653589793" upper="3.141592653589793" effort="8" velocity="1"/></joint>
+</robot>

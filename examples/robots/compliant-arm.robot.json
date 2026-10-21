@@ -1,0 +1,121 @@
+{
+  "schema_version": "robot-1.0",
+  "model": {
+    "path": "compliant-arm.urdf"
+  },
+  "massless_links": [
+    "base"
+  ],
+  "poses": [
+    {
+      "name": "straight",
+      "joints": {
+        "elbow": 0.0
+      }
+    },
+    {
+      "name": "bent",
+      "joints": {
+        "elbow": 0.6
+      }
+    }
+  ],
+  "gravity_m_s2": [
+    0,
+    0,
+    -9.80665
+  ],
+  "base": {
+    "type": "fixed"
+  },
+  "conditions": {
+    "inertials_verified": true,
+    "actuator_ratings_verified": true,
+    "mount_verified": true,
+    "poses_verified": true
+  },
+  "loads": [
+    {
+      "name": "tip",
+      "link": "second",
+      "force_n": [
+        0,
+        0,
+        -1.0
+      ],
+      "position_m": [
+        0.05,
+        0,
+        0
+      ],
+      "frame": "world",
+      "position_frame": "link"
+    }
+  ],
+  "components": [
+    {
+      "link": "first",
+      "case_path": "../mechanics/link.json",
+      "ports": {
+        "elbow": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 50
+        }
+      }
+    },
+    {
+      "link": "second",
+      "case_path": "../mechanics/link.json",
+      "ports": {
+        "tip": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 50
+        }
+      }
+    }
+  ],
+  "required_components": [
+    "first",
+    "second"
+  ],
+  "probes": [
+    {
+      "name": "tip",
+      "type": "surface_average",
+      "link": "second",
+      "component_selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 50
+      },
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "max_displacement_mm": 0.1
+    }
+  ],
+  "elastic_transfer": {
+    "rigid_links": [
+      "base"
+    ],
+    "joints_locked_verified": true,
+    "max_rotation_rad": 0.01,
+    "max_section_warping_mm": 0.001,
+    "reference": "Prescribed rigid locked joints, fully clamped upstream sections; numerical beam reference only.",
+    "rigid_joints": [
+      "mount"
+    ],
+    "joint_compliance": {
+      "elbow": {
+        "rotational_stiffness_n_m_rad": 100.0,
+        "reference": "Prescribed mathematical torsional spring at a held pose; no physical identification or product qualification",
+        "verified": false
+      }
+    }
+  },
+  "notes": "Numerical reference only. Fixed joint mount and all unmodeled joint directions are ideal rigid. Do not infer real robot acceptance."
+}

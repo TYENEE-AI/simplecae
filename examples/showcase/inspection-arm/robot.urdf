@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="inspection_arm">
+  <link name="base">
+    <inertial>
+      <origin xyz="-0.015076549616679473 -1.3538715576029363e-19 0.003674917339993412" />
+      <mass value="0.08105364168007238" />
+      <inertia ixx="1.8921345321497184e-05" iyy="1.614468746773415e-05" izz="2.0525965769036775e-05" ixy="3.602261474213703e-22" ixz="-3.1580199855439633e-06" iyz="-1.0325281848996201e-22" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="base.stl" scale=".001 .001 .001" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="first">
+    <inertial>
+      <origin xyz="0.09 0.0 0.004" />
+      <mass value="0.093312" />
+      <inertia ixx="4.976639999999999e-06" iyy="0.000252440064" izz="0.00025642137599999996" ixy="4.661870889322017e-23" ixz="0.0" iyz="0.0" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="first.stl" scale=".001 .001 .001" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="second">
+    <inertial>
+      <origin xyz="0.07 1.1419436824715894e-19 0.004" />
+      <mass value="0.072576" />
+      <inertia ixx="3.87072e-06" iyy="0.000118927872" izz="0.000122024448" ixy="5.640288236463682e-23" ixz="0.0" iyz="-4.3620852615101066e-39" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="second.stl" scale=".001 .001 .001" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="tool">
+    <inertial>
+      <origin xyz="0.003999999999999994 -1.3149461067349003e-19 0.011999999999999999" />
+      <mass value="0.018674801059979675" />
+      <inertia ixx="3.3102391251071323e-06" iyy="1.0043737459705634e-06" izz="2.521831969319643e-06" ixy="9.822542779147637e-24" ixz="0.0" iyz="-9.82254277914762e-24" />
+    </inertial>
+    <visual>
+      <geometry>
+        <mesh filename="tool.stl" scale=".001 .001 .001" />
+      </geometry>
+    </visual>
+  </link>
+  <link name="payload">
+    <inertial>
+      <origin xyz=".02 0 .012" />
+      <mass value=".2" />
+      <inertia ixx="0.00003" iyy="0.00004" izz="0.00004" ixy="0" ixz="0" iyz="0" />
+    </inertial>
+  </link>
+  <joint name="shoulder" type="revolute">
+    <parent link="base" />
+    <child link="first" />
+    <origin xyz="0 0 .012" />
+    <axis xyz="0 1 0" />
+    <limit lower="-1.5" upper="1.5" effort="2" velocity="2" />
+  </joint>
+  <joint name="elbow" type="revolute">
+    <parent link="first" />
+    <child link="second" />
+    <origin xyz=".18 0 0" />
+    <axis xyz="0 1 0" />
+    <limit lower="-1.5" upper="1.5" effort="2" velocity="2" />
+  </joint>
+  <joint name="tool_mount" type="fixed">
+    <parent link="second" />
+    <child link="tool" />
+    <origin xyz=".14 0 0" />
+  </joint>
+  <joint name="payload_mount" type="fixed">
+    <parent link="tool" />
+    <child link="payload" />
+    <origin xyz="0 0 0" />
+  </joint>
+</robot>

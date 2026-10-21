@@ -1,0 +1,6 @@
+interface:
+  display_name: "SimpleCAE"
+  short_description: "Use-driven checks, evidence tracking and targeted CAD feedback"
+  default_prompt: "Use $simplecae to select checks from this user's use scenario, prepare one task file, run only the chosen supported analyses, record all check outcomes against this CAD revision, and return located feedback for any warranted CAD change while preserving unknowns and numerical gates."
+policy:
+  allow_implicit_invocation: true
