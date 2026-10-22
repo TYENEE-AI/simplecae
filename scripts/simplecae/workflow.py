@@ -57,6 +57,8 @@ def analyze(case_path: Path, out: Path, ccx=None, timeout=DEFAULT_NATIVE_TIMEOUT
     write_json(out / "case.resolved.json", c)
     from .signals import structural_contract
     result['task_contract']=copy.deepcopy(structural_contract(c))
+    from .cad_metadata import observations
+    result['cad_metadata']=observations(c)
     try:
         from .resources import require_storage,native_output_estimate
         result['storage_preflight']=require_storage(out)
@@ -199,6 +201,13 @@ def analyze(case_path: Path, out: Path, ccx=None, timeout=DEFAULT_NATIVE_TIMEOUT
         emit(progress,'assessment')
         result["assessment"] = assess(c, result["levels"],components,predict_capacity=predict_capacity)
         result["status"] = result["assessment"]["status"]
+        from .singularities import diagnose
+        try:
+            singularity=diagnose(c,result['levels'],result['assessment'])
+            if singularity:result['singularity_diagnostic']=singularity
+        except Exception as exc:
+            # Auxiliary diagnosis cannot turn a completed numerical solve invalid.
+            result['singularity_diagnostic']={'classification':'unavailable','reason':str(exc)}
         if contact:result['stage_assessments']={'service':copy.deepcopy(result['assessment'])}
         if contact and preload_levels:
             result['preload_assessment']=assess(c,preload_levels,predict_capacity=predict_capacity)

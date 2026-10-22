@@ -1,0 +1,44 @@
+name: Latest CAD handoff smoke
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '31 4 * * 1'
+permissions:
+  contents: read
+jobs:
+  native-handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: System loader for Gmsh
+        run: sudo apt-get update && sudo apt-get install -y libglu1-mesa
+      - name: Three independent environments
+        run: |
+          python -m venv out/scad
+          python -m venv out/cadgen
+          python -m venv out/cae
+          out/scad/bin/pip install simplecadapi
+          out/cadgen/bin/pip install cadgen
+          out/cae/bin/pip install .
+      - name: Native exports and source-bound binding
+        env:
+          PYTHONPATH: scripts
+        run: |
+          out/scad/bin/python examples/integration/simplecad_beam.py --out out/cae/scad-handoff
+          out/cae/bin/python scripts/simplecae_cli.py bind-regions out/cae/scad-handoff/part.step --native-manifest out/cae/scad-handoff/interface_manifold.json --out out/cae/scad-bound.json
+          cp examples/integration/cadgen_partitioned_plate.py out/cadgen_partitioned_plate.py
+          out/cadgen/bin/python out/cadgen_partitioned_plate.py
+          out/cae/bin/python scripts/simplecae_cli.py inspect out/cadgen-partitioned-plate.step --out out/cae/cadgen-inspect.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-handoff-evidence
+          path: |
+            out/cae/scad-handoff/
+            out/cae/scad-bound*
+            out/cae/cadgen-inspect.json
+            out/cadgen-partitioned-plate.step

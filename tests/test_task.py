@@ -18,6 +18,18 @@ from test_signals import result
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.parametrize('sources',[[],None])
+def test_planning_before_CAD_exists_uses_manifest_as_source(tmp_path,sources):
+    p=read_plan(ROOT/'examples/use-plans/manual-mechanism.json')
+    p['schema_version']='simplecae-task-1.0'
+    if sources is not None:p['sources']=sources
+    path=tmp_path/'planning.json';write_json(path,p)
+    status=start_task(path,tmp_path/'session')
+    assert not status['whole_product_pass_available']
+    state=json.loads((tmp_path/'session/task-state.json').read_text(encoding='utf-8'))
+    assert str(path.resolve()) in state['bindings']
+
+
 def request(tmp_path, *, fem=False):
     source = tmp_path / 'cad.py'
     source.write_text('revision 1', encoding='utf8')
@@ -50,6 +62,10 @@ def evidence(tmp_path, status, cid=None, *, outcome='pass'):
 
 
 def test_geometry_task_does_not_start_a_solver_and_viewer_has_completion_records(tmp_path, monkeypatch):
+    # Windows Python may query its OS version with `ver` on first access.
+    # Resolve that stdlib metadata before guarding analysis process launches.
+    import platform
+    platform.system()
     monkeypatch.setattr(subprocess, 'Popen', lambda *a, **k: pytest.fail('No solver during preparation/recording'))
     s = start_task(request(tmp_path), tmp_path / 'task')
     assert not (tmp_path / 'task/runs').exists()
@@ -177,6 +193,41 @@ def test_reanalysis_is_not_requested_for_pass_or_incomplete_solve(tmp_path):
     missing = usage_feedback(binding, feedback(r, context(), 'analysis_failed'))
     assert missing['cad_iteration']['requires_reanalysis'] is False
     assert missing['cad_iteration']['reanalysis_trigger'] == 'after_input_or_analysis_repair_if_needed'
+
+
+def test_missing_criterion_guidance_preserves_old_review_and_uses_raw_evidence(tmp_path):
+    from simplecae.case import sha256
+    from simplecae.signals import digest
+    from simplecae.task import _analysis_note
+    from simplecae.use_plan import review_usage_feedback
+    bound = bind_plan(ROOT / 'examples/use-plans/bench-fixture.json', 'task-deflection', tmp_path / 'case.json')
+    bound['check']['result_criteria'] = ['unknown:requirement']
+    bound['contract']['checks'][0]['result_criteria'] = ['unknown:requirement']
+    bound['contract_sha256'] = digest(bound['contract'])
+    raw = result()
+    raw['case']['provenance']['task_id'] = bound['contract']['task_id']
+    path = tmp_path / 'result.json'
+    write_json(path, raw)
+    f = feedback(raw, context(), 'completed')
+    usage = usage_feedback(bound, f)
+    review = {'usage_plan': bound, 'usage_feedback': usage, 'feedback': f, 'context': context(),
+              'execution': {'state': 'completed'}, 'result': {'path': str(path), 'sha256': sha256(path)}}
+    # Old persisted review contains no new diagnostics, and must remain valid.
+    original = copy.deepcopy(review)
+    assert review_usage_feedback(review)['status'] == 'insufficient_evidence'
+    # Displayed cached feedback is not authoritative for discoverable keys.
+    review['feedback'] = {'criterion_assessments': {'invented-key': {}}}
+    validated = review_usage_feedback(review)
+    note = _analysis_note(review, validated)
+    assert {'strength', 'stiffness'} <= set(note['available_result_criteria'])
+    assert 'invented-key' not in note['available_result_criteria']
+    assert note['missing_result_criteria'] == ['unknown:requirement']
+    assert validated == original['usage_feedback']
+    assert review['usage_feedback'] == original['usage_feedback']
+    assert not validated['whole_product_pass_available']
+    path.write_text('{}', encoding='utf-8')
+    with pytest.raises(ValueError, match='evidence changed'):
+        review_usage_feedback(review)
 
 
 def test_computed_result_completes_only_selected_fem_and_preserves_raw_receipt(tmp_path, monkeypatch):

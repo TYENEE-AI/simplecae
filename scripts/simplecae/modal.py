@@ -21,7 +21,7 @@ GUARD = .02
 NOT_ASSESSED = [
     "Forced-response amplitude, damping, noise, comfort and vibration fatigue.",
     "Prestress, rotation/gyroscopic effects, contact and nonlinear joints.",
-    "Added payloads, multi-body assemblies or elastic supports not present in this single solid.",
+    "Unspecified payloads, remote payload COM/rotary inertia, payload stiffness, multi-body assemblies or elastic supports.",
     "Actual material/manufacturing and mounting conditions; physical modal tests and product approval."]
 
 
@@ -51,6 +51,7 @@ def schema():
                          "poisson": {"type": "number", "exclusiveMinimum": -1, "exclusiveMaximum": .49}},
                         ("name", "basis", "young_mpa", "density_kg_m3", "poisson")),
         "support_mode": enum("supported", "free_body"), "supports": dict(arr(support), maxItems=32),
+        "attached_masses":arr(obj({'name':S,'mass_kg':P,'selector':selector,'basis':S},('name','mass_kg','selector','basis'))),
         "elastic_mode_count": {"type": "integer", "minimum": 2, "maximum": 30},
         "mesh": obj({"sizes_mm": thermal["mesh"]["properties"]["sizes_mm"],
                      "max_elements": {"type": "integer", "minimum": 1},
@@ -88,8 +89,8 @@ def read_case(path):
     c["mesh"].setdefault("max_elements", DEFAULT_MODAL_ELEMENTS)
     from .local_mesh import validate_refinements
     validate_refinements(c["mesh"])
-    for key, field in (("supports", "name"), ("criteria", "id")):
-        values = [s[field] for s in c[key]]
+    for key, field in (("supports", "name"), ("criteria", "id"),('attached_masses','name')):
+        values = [s[field] for s in c.get(key,[])]
         if len(set(values)) != len(values):
             raise ValueError("Support names and criterion IDs must be unique")
     for criterion in c["criteria"]:
@@ -175,7 +176,7 @@ def analyze(path, out, ccx=None, timeout=DEFAULT_NATIVE_TIMEOUT, *, progress=Non
          "whole_product_pass_available": False, "not_assessed": NOT_ASSESSED+c["not_assessed"],
          "method": {"name": "Unprestressed isotropic C3D10 normal modes",
                     "implementation_sha256": {n: sha256(Path(__file__).with_name(n)) for n in
-                        ("modal.py", "modal_solver.py", "modal_matching.py", "geometry.py", "probes.py", "solver.py")}}}
+                        ("modal.py", "modal_solver.py", "modal_mass.py", "modal_matching.py", "geometry.py", "probes.py", "solver.py")}}}
     fields = []
     free = c["support_mode"] == "free_body"
     rigid = 6 if free else 0

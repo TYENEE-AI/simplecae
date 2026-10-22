@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "simplecae-comparison-1.0"
+    },
+    "comparable": {
+      "type": "boolean"
+    },
+    "withheld_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 2
+    },
+    "meaning": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "comparable",
+    "withheld_reasons",
+    "candidates",
+    "meaning"
+  ],
+  "additionalProperties": false
+}

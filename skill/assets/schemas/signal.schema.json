@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "simplecae-signal-1.0"
+    },
+    "analysis_status": {
+      "enum": [
+        "invalid",
+        "indeterminate",
+        "fail_under_stated_model",
+        "pass_under_stated_model"
+      ]
+    },
+    "valid_for_comparison": {
+      "type": "boolean"
+    },
+    "feasible_under_stated_model": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "physical_conditions_verified": {
+      "type": "boolean"
+    },
+    "whole_installation_rating_available": {
+      "const": false
+    },
+    "task_contract_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "task_id": {},
+    "candidate": {
+      "type": "object"
+    },
+    "utilizations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "bottleneck_margin": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "coverage": {
+      "type": "object"
+    },
+    "conditional_limit": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "feedback": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "minItems": 0
+    },
+    "not_assessed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 0
+    },
+    "score_meaning": {
+      "type": "string",
+      "minLength": 1
+    },
+    "criterion_assessments": {
+      "type": "object"
+    },
+    "whole_product_pass_available": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "analysis_status",
+    "valid_for_comparison",
+    "feasible_under_stated_model",
+    "physical_conditions_verified",
+    "whole_installation_rating_available",
+    "task_contract_sha256",
+    "task_id",
+    "candidate",
+    "utilizations",
+    "bottleneck_margin",
+    "metrics",
+    "coverage",
+    "conditional_limit",
+    "feedback",
+    "not_assessed",
+    "score_meaning"
+  ],
+  "additionalProperties": false,
+  "title": "SimpleCAE design signal",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "valid_for_comparison": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bottleneck_margin": {
+            "type": "null"
+          },
+          "feasible_under_stated_model": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

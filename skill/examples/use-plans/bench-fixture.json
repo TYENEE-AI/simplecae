@@ -1,0 +1,12 @@
+{
+  "schema_version": "simplecae-use-plan-1.0",
+  "task_id": "preview-beam-200N",
+  "request": "数学参考：比较同一200N夹持梁任务的两个截面，检查承载区下垂是否影响使用。不是实物产品。",
+  "scenarios": [{"id": "hold", "use": "理想夹持梁承受声明端部力", "success": "满足case中0.3mm位移限值和相同强度判据"}],
+  "checks": [
+    {"id": "task-deflection", "scenario": "hold", "question": "截面是否满足声明静载强度和下垂限值？", "user_impact": "端部下垂超限时支承位置会偏离；强度超限是另一个不可忽略的要求", "method": "fem", "decision": "now", "targets": ["承载梁及夹持根部"], "reason": "一项有解析参考的单件检查足以验证本轮工具流程，不代表产品安装验收", "required_for_claim": true, "acceptance": "200N、同一材料与夹持条件；0.3mm位移上限和原强度判据不变", "assumptions": ["规定的数学材料", "理想整端面夹持和均布端面力"], "not_assessed": ["实际夹具", "制造与材料标定"], "load_path": "端面力经梁传到理想夹持端", "load_basis": "数学参考规定的端面向下200N，非实测产品载荷", "support_basis": "明确的理想夹持参考，不能视为实际螺钉连接", "result_criteria": ["strength", "stiffness"]},
+    {"id": "real-mount", "scenario": "hold", "question": "未来实物安装是否符合模型？", "user_impact": "安装柔度或失效可能影响实际下垂和承载", "method": "physical_test", "decision": "later", "targets": ["未来实际夹具"], "reason": "本次只验证数学参考流程；实物声明必须另外补齐", "required_for_claim": true, "acceptance": "实际夹具与材料有独立适用证据", "assumptions": [], "not_assessed": ["产品通过"]}
+  ],
+  "unknowns": ["无实物标定；这是数学参考"],
+  "iteration_constraints": ["200N与0.3mm限值不变", "材料与夹持不变", "仅改变梁截面，重新检查接口"]
+}

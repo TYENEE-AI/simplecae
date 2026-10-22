@@ -87,9 +87,13 @@ def validate_plan(plan):
     keys = {'id', 'scenario', 'question', 'user_impact', 'method', 'decision', 'targets',
             'reason', 'required_for_claim', 'acceptance', 'assumptions', 'not_assessed'}
     optional = {'load_path', 'load_basis', 'support_basis', 'result_criteria', 'case_path'}
-    for c in plan['checks']:
+    for index,c in enumerate(plan['checks']):
         if not isinstance(c, dict) or not keys <= set(c) or set(c) - keys - optional:
-            raise ValueError('Each check requires scenario, purpose, scope, method, decision, criteria and explicit limitations')
+            missing=sorted(keys-set(c)) if isinstance(c,dict) else sorted(keys)
+            extra=sorted(set(c)-keys-optional) if isinstance(c,dict) else []
+            raise ValueError(f'checks[{index}]: missing fields {missing}; unknown fields {extra}. '
+                'Use task scaffold for a complete check. Examples: method="fem", decision="needs_information", '
+                'required_for_claim=true, assumptions=[], not_assessed=["Actual mounting remains unverified"].')
         for key in keys - {'targets', 'required_for_claim', 'assumptions', 'not_assessed'}:
             _text(c[key], 'check.' + key)
         if c['id'] in ids:

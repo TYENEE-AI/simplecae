@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "simplecae-campaign-1.0"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+          },
+          "case_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "case_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$"
+          },
+          "ledger_path": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "case_path",
+          "case_sha256"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "notes": {}
+  },
+  "required": [
+    "schema_version",
+    "title",
+    "items"
+  ],
+  "additionalProperties": false
+}

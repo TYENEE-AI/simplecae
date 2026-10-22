@@ -78,6 +78,13 @@ The file has the same fields as `simplecae-use-plan-1.0`, with
 
 The toolkit generates plan, cases and contexts, and creates a Viewer. Select
 checks explicitly; loads, supports, materials and criteria are never guessed.
+`result_criteria` must use exact keys from the case's `signal.json`, including
+pose prefixes: for example `straight/actuator/shoulder`, not
+`actuator:shoulder`. When a key is missing, `task status --brief` includes
+`analysis.available_result_criteria` derived from the actual result. Check each
+key's meaning; a torque check cannot replace a requested displacement check.
+Correct mistaken references in a fresh task revision and retain the previous
+evidence and budget. The tool does not guess aliases or weaken acceptance.
 Use `--viewer-session EXISTING_SESSION` for several fresh CAD revisions in one
 Viewer. Keep each revision's sources immutable; start a fresh task/workspace
 after a CAD change. Existing `design-compare` accepts generated
@@ -205,3 +212,19 @@ link thickening alone is not guaranteed to solve the usage problem. The raw
 result, failure criterion and comparison gates are unchanged.
 
 For rigid statics without component FEM, read [calculation checks](rigid-calculation-checks.md). External calculations remain artifact receipts; explicit computed calculations bind named criteria and cannot use external overrides.
+## Task scaffolding
+
+`task scaffold --preset hook|bracket|plate --material MATERIAL --out out/cae/draft`
+prepopulates the planning fields. Without physical inputs it writes a valid
+`needs_information` plan and lists missing flags; no case or worker is created.
+`MATERIAL` is a sourced material JSON file or `reference-steel`, which is explicitly
+a mathematical fixture, not a grade or certification. A CAD label is insufficient.
+
+Add `--model part.step --interfaces interface_manifold.json --force-n 0 0 -49
+--max-displacement-mm 0.3` to prepare an immediate body check. The default safety
+factor 2 is labeled a screening assumption and can be set with `--safety-factor`.
+All physical verification conditions stay false. Initial mesh sizes come from the
+smallest bounding extent (three levels at 0.75 ratios); `--mesh-sizes` overrides
+this planning example, and normal meshing/accuracy/resource checks still apply.
+Review the saved boundary preview before solving. Installation evidence remains a
+separate required pending check, so a body pass cannot complete the product task.

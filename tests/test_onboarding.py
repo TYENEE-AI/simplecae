@@ -21,6 +21,8 @@ def load(name):
 
 @pytest.fixture
 def shell_root(tmp_path):
+    if os.name!='nt':
+        pytest.skip('Windows PowerShell integration requires Windows paths/runtime, not the WSL interoperability shim')
     ps = shutil.which('powershell.exe')
     if not ps:
         pytest.skip('Windows PowerShell integration')
@@ -29,6 +31,7 @@ def shell_root(tmp_path):
     subprocess.run([sys.executable, '-m', 'venv', '--without-pip', str(root / '.venv')], check=True)
     for name in ('bootstrap.ps1', 'start_viewer.ps1'):
         shutil.copy2(ROOT / 'scripts' / name, root / 'scripts' / name)
+    shutil.copy2(ROOT / 'scripts/download_verified.py', root / 'scripts/download_verified.py')
     # A stdlib-only runtime double records the launcher's calls. No solver/browser/network.
     (root / 'scripts/simplecae_cli.py').write_text('''
 from pathlib import Path
@@ -152,6 +155,65 @@ def test_license_audit_tolerates_line_endings_but_rejects_content_changes(tmp_pa
         with pytest.raises((ValueError, FileNotFoundError)): module.check(tmp_path)
 
 
+def test_bootstrap_interrupted_http_download_can_retry_without_removing_evidence(shell_root):
+    import hashlib
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    import io
+    import threading
+    import zipfile
+    ps, root = shell_root
+    (root / 'scripts/runtime_ready.py').write_text('raise SystemExit(0)')
+    (root / 'scripts/simplecae/__init__.py').write_text('')
+    (root / 'scripts/simplecae/solver.py').write_text('def find_ccx(): raise FileNotFoundError("missing")')
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, 'w') as z:
+        z.writestr('CalculiX-2.23.0-win-x64/bin/ccx.exe', b'launcher fixture, not a native solver')
+    payload = stream.getvalue()
+    interrupted = [True]
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-Length', str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload[:50] if interrupted[0] else payload)
+
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    script = root / 'scripts/bootstrap.ps1'
+    text = script.read_text(encoding='utf-8').replace(
+        '79a674fdee735a22720bbd12bb9ccbadad1e8c8ad5b1de74e1c62f8808b2d395', hashlib.sha256(payload).hexdigest())
+    import re
+    text = re.sub(r"\$simplecaeUrl = '[^']+'", f"$simplecaeUrl = 'http://127.0.0.1:{server.server_port}/archive'", text)
+    script.write_text(text, encoding='utf-8')
+    env = dict(os.environ, PIP_NO_INDEX='1')
+    env.pop('SIMPLECAE_CCX', None)
+    command = [ps, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', str(script), '-DownloadTimeoutSeconds', '10']
+    archive = root / '.tools/CalculiX-2.23.0-win-x64.zip'
+    try:
+        failed = subprocess.run(command, capture_output=True, text=True, timeout=30, env=env)
+        assert failed.returncode != 0 and 'retained' in failed.stderr
+        assert not archive.exists() and not (root / 'calls.jsonl').exists()
+        fragments = list((root / '.tools').glob('*.partial'))
+        assert len(fragments) == 1
+        original = fragments[0].read_bytes()
+        interrupted[0] = False
+        recovered = subprocess.run(command, capture_output=True, text=True, timeout=30, env=env)
+        assert recovered.returncode == 0, recovered.stdout + recovered.stderr
+        assert archive.read_bytes() == payload
+        assert fragments[0].read_bytes() == original
+        assert (root / '.tools/calculix-2.23/CalculiX-2.23.0-win-x64/bin/ccx.exe').is_file()
+        assert len((root / 'calls.jsonl').read_text(encoding='utf-8').splitlines()) == 1
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=5)
+
+
 @pytest.mark.parametrize('problem', ['version', 'missing'])
 def test_runtime_reuse_rejects_incompatible_or_missing_dependency(tmp_path, monkeypatch, problem):
     module = load('runtime_ready')
@@ -168,6 +230,7 @@ def test_runtime_reuse_rejects_incompatible_or_missing_dependency(tmp_path, monk
 @pytest.mark.parametrize('origin_matches', [True, False])
 def test_runtime_reuse_checks_actual_source_not_stale_version_label(tmp_path, monkeypatch, origin_matches):
     from types import SimpleNamespace
+    from simplecae import gmsh_runtime
     module = load('runtime_ready')
     (tmp_path / 'pyproject.toml').write_text('[project]\nname="simplecae-toolkit"\nversion="9.9"\nrequires-python=">=3.11"\ndependencies=["numpy>=2,<3"]')
     monkeypatch.setattr(module.metadata, 'version', lambda name: '0.1' if name=='simplecae-toolkit' else '2.0')
@@ -175,6 +238,14 @@ def test_runtime_reuse_checks_actual_source_not_stale_version_label(tmp_path, mo
     dist = SimpleNamespace(metadata={'Name':'simplecae-toolkit'}, read_text=lambda _: json.dumps(
         {'url':origin.as_uri(), 'dir_info':{'editable':True}}))
     monkeypatch.setattr(module.metadata, 'distributions', lambda **kwargs: [dist])
-    monkeypatch.setitem(sys.modules, 'simplecae', SimpleNamespace(__file__=str(tmp_path / 'scripts/simplecae/__init__.py')))
+    monkeypatch.setitem(sys.modules, 'simplecae', SimpleNamespace(
+        __file__=str(tmp_path / 'scripts/simplecae/__init__.py'), gmsh_runtime=gmsh_runtime))
     monkeypatch.setitem(sys.modules, 'gmsh', SimpleNamespace(initialize=lambda:None, finalize=lambda:None))
     assert module.ready(tmp_path) is origin_matches
+
+
+def test_shell_entrypoints_preserve_posix_line_endings():
+    scripts = list((ROOT / "scripts").rglob("*.sh"))
+    assert scripts
+    for script in scripts:
+        assert b"\r" not in script.read_bytes(), f"Shell entrypoint must use LF: {script}"

@@ -79,6 +79,8 @@ Agent 能据此区分设计确实不满足要求、分析本身需要修复，�
 搭配时，用可编辑建模源、参数与装配约束保持设计可追溯。
 **联动由 Agent 编排，交换文件与结构化结果；SimpleCAE 不会自行调用或自动安装这些 CAD 工具。**
 
+SimpleCADAPI 笔记本可在其独立环境运行 `simplecae_scad`，导出 STEP、原生标签面清单和参数来源；装配保留局部坐标与摆放，改型后重新导出并比较。cadgen 的查看器面引用可通过 `refs resolve` 按源文件哈希核对。机器人另提供受限 MJCF → URDF 转换和逐连杆 STEP 关联，转换会核查原生关节坐标；网格显示成功不等于连杆强度通过。[原生交接](references/robot-format-handoff.md)
+
 可以直接对同时具备两个 skill 的 Agent 说：
 
 > 用 text-to-cad 做一个固定角度的桌面手机支架，手机 250 g，PLA 打印，
@@ -113,6 +115,9 @@ Agent 能据此区分设计确实不满足要求、分析本身需要修复，�
 - `mesh-policy` 展示对应物理类型的网格要求；`advise` 根据已保留证据提出网格与资源建议，包含装配总量、已观察阶段耗时和未知项，不自动改精度或重算。
 - CAD 改版后，`bind-regions --previous` 提供区域面数、面积与重心变化诊断；支持当前 CAD 的原生命名区域清单。歧义不会自动替换为最近面，区域含义仍需核对。
 - 支持范围内的线性实体与粘结装配可显式使用 `--reuse-levels` 安全续算；输入、来源和已完成级别须通过校验。Agent 可读取结构化 `recovery` 决定下一步。
+- 任务引用的结果判据不存在时，`task status --brief` 会列出实际可用的判据键，帮助 Agent 修正引用；不会自动换用别的测量，也不会把缺项变成通过。
+- `doctor --compare-root <另一份目录>` 可显示当前运行资源与已知副本的身份差异；不自动切换或覆盖安装。
+- 模态可显式声明面分布附加质量，并在独立质量矩阵审计中计入；偏置重心、转动惯量与实际连接柔度不在这一简化模型内。[输入说明](references/modal-analysis.md)
 
 [预算与资源](references/execution-resources.md) · [续算边界](references/agent-tasks.md) · [区域绑定](references/model-adapters.md)
 
@@ -138,7 +143,7 @@ Agent 据热阻与实体温度证据修改导热截面；实际接触热阻、�
 
 ## 安装运行环境
 
-当前目录包含基于 1.6.0 的本地维护更新：首次使用、预算与安全续算、区域诊断及 Viewer 加载等。[本次验证范围](validation/README.md)
+当前目录包含基于 1.6.0 的本地维护更新：首次使用、预算与安全续算、区域诊断、Viewer 加载及安装恢复等。[本次验证范围](validation/README.md)
 单独说明；旧发布凭证已归档，不作为当前源码的验证声明或安装门槛。
 
 若要安装到 Agent 的技能目录，先做下节的“安装到 Agent”，再进入安装目标运行
@@ -156,11 +161,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap.ps1
 .\.venv\Scripts\python.exe scripts/simplecae_cli.py quickstart --out outputs/first-001
 ```
 
+Windows 求解器下载到独立临时文件，SHA-256 校验通过后才成为可复用安装包。
+中断文件会保留，重试不会复用半成品。下载 worker 默认限时 3000 秒，可用
+`-DownloadTimeoutSeconds` 调整；它与分析预算、pip 安装耗时分别计量。
+
 无需激活环境。脚本优先复用符合依赖范围的本地环境和已配置求解器；需要新装时
 只安装运行依赖。`-Locked` 留给需要复现完整测试依赖的维护者。新下载的求解器
 仍在解压前校验完整性。自选解释器／求解器加 `-Python PATH`、`-Ccx PATH`。
 Python 必须包含 `venv` 和 `ensurepip`；Agent 自带的精简版可能没有，可直接指定
 机器上已有的完整版 Python。已有正常环境不需要另找系统 Python。
+原生共享库或加载失败会单独报错，不再因此重复运行 pip；只有 Python 依赖或安装来源需要修复时才安装，安装后再次检查就绪状态。
 
 **Ubuntu / bash**
 

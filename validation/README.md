@@ -1,22 +1,30 @@
-# Validation scope for this checkout
+# Verification scope
 
-This checkout includes installation, budget/continuation, CAD region diagnostics,
-resource advice and Viewer maintenance on top of 1.6.0.
-`workflow-maintenance-20261021.json` records the latest scoped verification:
-898 Windows regressions passed, 2 platform-specific symlink checks skipped;
-real Linux symlink/cache checks, five native historical scenarios, three native
-recovery scenarios, Viewer parity/browser checks and isolated installation passed.
-The robot negative case remains a model failure; expected behavior passed.
-This does not establish fresh Linux native FEM or independent external review.
+This directory keeps the uploadable verification summary only. Detailed local
+logs, test outputs, source snapshots, historical receipts and audit reports are
+retained outside this repository. They are not dependencies of ordinary skill
+installation or analysis.
 
-`onboarding-fix.json` records the scoped regression and smoke checks performed.
-It does not claim a fresh full numerical release qualification.
+Recorded verification on 2026-10-22:
 
-The previous source-bound receipt is retained in `history/` for traceability.
-It belongs to the earlier source snapshot, not this edited checkout. Ordinary
-installation does not require a receipt. Do not regenerate a passing receipt
-merely to make hashes match. `--verify-release` is an optional maintainer audit
-and will require new release evidence before this checkout can claim qualification.
+- Full regression before the subsequent installation recovery change: Windows
+  1010 passed / 4 platform skips; Linux 1007 passed / 7 platform skips. Skipped
+  checks passed on the applicable other platform.
+- Two independent Agents exercised five scoped scenarios. A valid thermal
+  failure and missing material/compliance evidence remained failures or gaps;
+  no whole-product acceptance was claimed.
+- Subsequent installation recovery change: Windows 61 passed / 4 skips; Linux
+  58 passed / 7 skips, plus actual native probes and update/reuse of previously
+  clean isolated Windows/Linux environments. This was not another full physics
+  regression or a fresh dependency download.
+- macOS, physical-product validation and hosted CI were not tested in this round.
 
-Missing/deprecated release receipts are separate from case validity: material,
-load, support, mesh, convergence, result-binding and product-scope checks remain.
+These are historical, scoped results, not a current source-bound release receipt
+or a guarantee of defect-free software. Upload-directory cleanup and documentation
+changes do not constitute numerical retesting.
+
+Ordinary `scripts/install_local.py` installation does not require validation
+receipts, full pytest, license audits or `--verify-release`. Download integrity,
+runtime readiness and analysis evidence checks remain in place. Maintainer-only
+qualified packaging / `--verify-release` still requires fresh, source-bound
+release evidence; this summary does not substitute for it.

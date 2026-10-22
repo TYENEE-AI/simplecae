@@ -14,9 +14,12 @@ def enum(*values):return {'enum':list(values)}
 def contracts():
     defs={}
     defs['selector']={'oneOf':[
-        obj({'type':{'const':'plane'},'axis':enum('x','y','z'),'position_mm':N,'tolerance_mm':P},('type','axis','position_mm')),
+        dict(obj({'type':{'const':'plane'},'axis':enum('x','y','z'),'position_mm':N,'tolerance_mm':P,'normal':V,'offset_mm':N,'tol_mm':P},('type',)),
+             oneOf=[{'required':['axis','position_mm'],'not':{'anyOf':[{'required':['normal']},{'required':['offset_mm']},{'required':['tol_mm']}]}},
+                    {'required':['normal','offset_mm'],'not':{'anyOf':[{'required':['axis']},{'required':['position_mm']},{'required':['tolerance_mm']}]}}]),
         obj({'type':{'const':'face_ids'},'ids':{'type':'array','items':{'type':'integer','minimum':1},'minItems':1,'uniqueItems':True},'geometry_sha256':{'type':'string','pattern':'^[0-9a-fA-F]{64}$'}},('type','ids','geometry_sha256')),
-        obj({'type':{'const':'interface'},'name':S},('type','name'))]}
+        obj({'type':{'const':'interface'},'name':S},('type','name')),
+        obj({'type':{'const':'by_normal'},'dir':V,'max_angle_deg':{'type':'number','minimum':0,'maximum':180}},('type','dir','max_angle_deg'))]}
     defs['model']=obj({'path':S,'expected_bbox_mm':{'type':'array','items':V,'minItems':2,'maxItems':2},'units':enum('m','mm','cm'),'source_up_axis':enum('y','z'),'scene_node':S,'pose':enum('rest'),'interface_manifest':S,
         'solid_id':obj({'id':{'type':'integer','minimum':1},'geometry_sha256':{'type':'string','pattern':'^[0-9a-fA-F]{64}$'}},('id','geometry_sha256'))},('path',))
     constants=('e1_mpa','e2_mpa','e3_mpa','nu12','nu13','nu23','g12_mpa','g13_mpa','g23_mpa')
@@ -29,7 +32,8 @@ def contracts():
     dofs={'type':'array','items':{'type':'integer','minimum':1,'maximum':3},'minItems':1,'maxItems':3,'uniqueItems':True}
     defs['support']=obj({'name':S,'selector':ref('selector'),'dofs':dofs},('name','selector'))
     reference_support=obj({'name':S,'point_mm':V,'dofs':dofs,'geometry_sha256':{'type':'string','pattern':'^[0-9a-fA-F]{64}$'}},('name','point_mm','dofs','geometry_sha256'))
-    force={'name':S,'selector':ref('selector'),'total_force_n':V,'total_moment_n_mm':V,'application_point_mm':V,'scalable':B}
+    force={'name':S,'selector':ref('selector'),'total_force_n':V,'total_moment_n_mm':V,'application_point_mm':V,'scalable':B,
+           'distribution':enum('consistent','bearing_only'),'allow_opposite_traction':B}
     defs['load']=obj(force,('name','selector','total_force_n'))
     defs['criteria']=obj({'yield_safety_factor':{'anyOf':[{'type':'number','minimum':1},{'type':'null'}]},'strength_safety_factor':{'type':'number','minimum':1},'max_displacement_mm':{'anyOf':[P,{'type':'null'}]},'max_small_displacement_ratio':P,'max_strain_norm':P})
     local=obj({'name':S,'selector':ref('selector'),'size_factor':{'type':'number','exclusiveMinimum':0,'maximum':1},'distance_mm':P,'sampling':{'type':'integer','minimum':10,'maximum':500}},('name','selector','size_factor','distance_mm'))
@@ -72,7 +76,9 @@ def contracts():
         'payloads':arr(obj({'name':S,'link':S,'mass_kg':P,'center_m':V,'scalable':B},('name','link','mass_kg','center_m'))),
         'loads':arr(obj({'name':S,'link':S,'force_n':V,'moment_n_m':V,'position_m':V,'frame':enum('link','world'),'position_frame':enum('link','world'),'scalable':B},('name','link','force_n','position_m'))),
         'effort_safety_factor':{'type':'number','minimum':1},'effort_limits':{'type':'object','additionalProperties':P},'conditions':obj({k:B for k in robot_conditions},robot_conditions),
-        'components':arr(obj({'link':S,'case_path':S,'ports':{'type':'object','additionalProperties':ref('selector')},'mass_relative_tolerance':P,'com_tolerance_mm':P,'link_from_component':frame},('link','case_path','ports'))),'required_components':arr(S),'provenance':ref('provenance'),'grasp':ref('grasp'),'notes':{},'probes':arr(ref('robot_probe')),'actuation_reactions':arr(ref('actuation_reaction'))},('schema_version','model','poses','gravity_m_s2','base','conditions'))
+        'components':arr(obj({'link':S,'case_path':S,'ports':{'type':'object','additionalProperties':ref('selector')},
+            'port_load_policies':{'type':'object','additionalProperties':obj({'distribution':enum('consistent','bearing_only'),'allow_opposite_traction':B,'reference':S},('reference',))},
+            'mass_relative_tolerance':P,'com_tolerance_mm':P,'link_from_component':frame},('link','case_path','ports'))),'required_components':arr(S),'provenance':ref('provenance'),'grasp':ref('grasp'),'notes':{},'probes':arr(ref('robot_probe')),'actuation_reactions':arr(ref('actuation_reaction'))},('schema_version','model','poses','gravity_m_s2','base','conditions'))
     connection['properties']['type']=enum('bonded','linear_interface','frictionless_contact','frictional_contact')
     connection['properties'].update(friction_coefficient=P,max_tangential_displacement_mm=P,slip_convergence_tolerance_mm=P,initial_gap_mm={'type':'number','minimum':0},gap_convergence_tolerance_mm=P)
     connection['properties']['footprint']=enum('matching','slave_within_master')
@@ -212,12 +218,39 @@ def check_contract(value,kind='case'):
             else:leaves.append(error)
         for error in errors:descend(error)
         leaves=sorted(leaves,key=lambda e:(-len(e.absolute_path),str(list(e.absolute_path))))
-        messages=[]
+        messages=[];repair_hints=[]
+        def legal_example(spec,depth=0):
+            if depth>4:return None
+            if '$ref' in spec:
+                target=schema
+                for token in spec['$ref'].split('/')[1:]:target=target[token]
+                return legal_example(target,depth+1)
+            if 'const' in spec:return spec['const']
+            if 'enum' in spec:return spec['enum'][0]
+            kind=spec.get('type')
+            if kind=='string':return 'explicit applicable source or value'
+            if kind=='boolean':return False
+            if kind in ('number','integer'):return spec.get('minimum',max(1,spec.get('exclusiveMinimum',0)+1))
+            if kind=='array':return [legal_example(spec.get('items',{}),depth+1) for _ in range(spec.get('minItems',1))]
+            if kind=='object':return {k:legal_example(spec['properties'].get(k,{}),depth+1) for k in spec.get('required',[])}
+            for branch in spec.get('oneOf',spec.get('anyOf',[])):
+                example=legal_example(branch,depth+1)
+                if example is not None:return example
+            return None
         for e in leaves:
             location='$'+''.join(f'[{x}]' if isinstance(x,int) else '.'+str(x) for x in e.absolute_path)
             message=location+': '+e.message
             if message not in messages:messages.append(message)
+            if e.validator=='required' and isinstance(e.instance,dict):
+                for name in e.validator_value:
+                    if name not in e.instance:
+                        item={'path':location+'.'+name,'legal_shape_example':legal_example(e.schema.get('properties',{}).get(name,{})),
+                              'meaning':'Syntax example only; supply the actual physical value and source.'}
+                        if item not in repair_hints:repair_hints.append(item)
+            elif e.validator in ('enum','const'):
+                repair_hints.append({'path':location,'legal_values':e.validator_value})
         raise ContractError('JSON contract: '+ '; '.join(messages[:4]),
             {'code':'invalid_contract','issues':messages,
+             'repair_hints':repair_hints,
              'next_action':'Repair the located input fields using the selected contract; preserve physical meaning and declared requirements.'})
     return value

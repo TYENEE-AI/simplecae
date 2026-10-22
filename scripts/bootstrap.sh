@@ -41,14 +41,19 @@ runtime="$venv/bin/python"
 if "$runtime" "$root/scripts/runtime_ready.py"; then
     echo "Reusing the existing runtime; no dependency download needed."
 else
+    ready_code=$?
+    if [[ "$ready_code" -ne 1 ]]; then
+        echo "Runtime inspection or native loading failed. Repair the reported shared libraries/runtime or configuration; Python packages were not reinstalled." >&2
+        exit "$ready_code"
+    fi
     "$runtime" -m pip install --no-cache-dir -e "$root"
+    "$runtime" "$root/scripts/runtime_ready.py" || {
+        echo "Runtime still unavailable after Python setup; resolve the reported cause before retrying." >&2
+        exit 1
+    }
 fi
 if [[ -z "$ccx" ]]; then
     ccx="$("$runtime" -c 'from simplecae.solver import find_ccx; print(find_ccx())')"
-fi
-if ! "$runtime" -c 'import gmsh; gmsh.initialize(); gmsh.finalize()'; then
-    echo "Gmsh native libraries are missing. Ubuntu prerequisites: libglu1-mesa libxft2 libxcursor1 libxinerama1 libgomp1. Install them with your package manager." >&2
-    exit 1
 fi
 "$runtime" "$root/scripts/simplecae_cli.py" doctor --ccx "$ccx"
 "$runtime" - "$root" "$ccx" <<'PY'

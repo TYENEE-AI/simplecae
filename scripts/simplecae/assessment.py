@@ -199,12 +199,14 @@ def assess(c, levels, field_components=None, *, predict_capacity=True):
     if c.get("buckling",{}).get("enabled"):
         factors=[l.get("buckling",{}).get("lowest_positive_factor") for l in levels]
         changes=[abs(b-a)/b for a,b in zip(factors,factors[1:])] if all(f is not None and f>0 for f in factors) else []
-        buckling_ok=len(changes)>=2 and all(x<=c["buckling"].get("eigenvalue_relative_tolerance",.05) for x in changes[-2:])
+        normalized=all(l.get('buckling',{}).get('reference_normalization_verified') is True for l in levels)
+        buckling_ok=normalized and len(changes)>=2 and all(x<=c["buckling"].get("eigenvalue_relative_tolerance",.05) for x in changes[-2:])
         buckling={"lowest_positive_load_factor":factors[-1],"mesh_relative_changes":changes,"mesh_converged":buckling_ok,
+                  "reference_normalization_verified":normalized,
                   "safety_factor":c["buckling"].get("safety_factor",2.),"reference_utilization":c["buckling"].get("safety_factor",2.)/factors[-1] if factors[-1] else None,
                   "interpretation":"ideal elastic bifurcation screening; not nonlinear collapse or calibrated imperfection allowance"}
         if not buckling_ok:
-            reasons.append("elastic buckling factors have not converged or no positive factor was found")
+            reasons.append("elastic buckling factors lack mesh/reference-scale qualification or no positive factor was found")
         criteria_evidence['elastic_buckling']=criterion_state(buckling['reference_utilization'],buckling_ok)
     scale, governing, predicted_small = None, None, None
     if contact:

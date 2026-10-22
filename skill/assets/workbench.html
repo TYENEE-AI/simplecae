@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SimpleCAE · 分析审阅</title><link rel="stylesheet" href="workbench.css"></head>
+<body>
+<header><div class="brand">SimpleCAE <span>Viewer</span></div><div id="connection">本地快照</div><button id="refresh" title="重新核对证据文件">核对文件</button></header>
+<main>
+<div class="project"><div><div class="eyebrow">ENGINEERING REVIEW</div><h1 id="title">分析审阅</h1></div><div id="verdict" class="verdict">尚无分析结果</div></div>
+<div class="workarea">
+<section class="viewport" aria-label="三维结果视窗">
+<div id="durability-panel" hidden><div class="toolbar"><label>检查位置 <select id="durability-point" aria-label="耐久检查位置"></select></label><span>材料数据范围内的检查</span></div><div id="durability-values"></div></div>
+<div id="motion-panel" hidden><div class="toolbar"><label>运动状态 <select id="motion-state" aria-label="运动状态"></select></label><span>刚体载荷 · SI 单位</span></div><div id="motion-values"></div></div>
+<div id="modal-tools" class="toolbar" hidden><label>振型 <select id="modal-mode" aria-label="弹性振型"></select></label><button id="modal-play">播放示意</button><span>任意归一化 · 非真实振幅，非实际播放频率</span></div>
+<div class="toolbar"><label>结果 <select id="dataset" aria-label="结果对象"></select></label><label>显示 <select id="field" aria-label="显示场"><option value="temperature">温度</option><option value="thermal_history">温度历程</option><option value="stress">等效应力</option><option value="strength">强度利用率</option><option value="displacement">位移模长</option><option value="boundary">边界条件</option></select></label><label>变形 <select id="deformation" aria-label="变形倍率"><option value="0">原形</option><option value="1">×1</option><option value="10">×10</option><option value="50">×50</option><option value="100">×100</option></select></label><label class="check"><input id="mesh" type="checkbox">网格</label><button id="reset">适配</button></div>
+<div class="canvas-wrap"><canvas id="model" aria-label="有限元结果，可拖动旋转、滚轮缩放、点击选择区域"></canvas><div id="empty" class="empty" hidden></div><div class="view-caption"><span id="view-label">局部有限元坐标 · mm</span><span id="spatial-hint">拖动旋转 · 滚轮缩放 · Shift 拖动平移</span></div><div id="spatial-axes" class="axis-label">X / Y / Z</div></div>
+<div class="legend"><span id="legend-label">等效应力 / MPa</span><div id="ramp"></div><span id="legend-min">0</span><span id="legend-max">—</span><span id="field-note">积分点峰值映射，未裁剪热点</span></div>
+<div class="comparebar"><label>对照 <select id="baseline" aria-label="对照版本"><option value="">无</option></select></label><label class="check"><input id="overlay" type="checkbox">原形叠加</label><span id="compare-message">选一版查看变化</span></div>
+<div id="selection" class="selection">点击模型，查看实际单元与区域位置</div>
+</section>
+<aside>
+<nav class="tabs" aria-label="结果信息"><button class="active" data-tab="assessment">判定</button><button data-tab="inputs">输入条件</button><button data-tab="notes">批注 <span id="note-count">0</span></button></nav>
+<section id="assessment" class="panel active"><div class="section-label">当前任务</div><div id="task"></div><div id="usage-summary"></div><div id="metrics"></div><div class="section-label">证据与边界</div><div id="verification"></div><details><summary>未评估项与假设</summary><div id="gaps"></div></details><details><summary>网格与来源</summary><div id="source"></div></details><button id="download-result" class="textbutton">导出审阅数据 JSON ↗</button></section>
+<section id="inputs" class="panel"><p class="hint">这些是本次求解的记录。修改条件需由 Agent 新建任务并重新分析。</p><div id="input-data"></div></section>
+<section id="notes" class="panel"><p class="hint">选中区域后可添加批注。保存到会话的 feedback 目录，供 Agent 读取；批注本身不会启动求解。</p><div id="note-target">未选择区域，将添加整版批注</div><label class="sr-only" for="note-text">批注内容</label><textarea id="note-text" rows="4" placeholder="例如：这里靠近安装孔，请检查载荷方向和局部刚度。"></textarea><button id="save-note" class="primary">保存批注</button><span id="note-state" role="status"></span><div id="notes-list"></div></section>
+</aside>
+</div>
+<section class="history" id="task-progress" aria-label="各类检查完成记录" hidden><div class="history-title"><h2>使用检查进度</h2><span>外部检查为记录证据；完成声明项不代表产品验收</span></div><div id="task-checks"></div></section>
+<section class="history" aria-label="版本与执行记录"><div class="history-title"><h2>版本记录</h2><span>保留失败与证据不足；判定不等于产品验收</span></div><div id="runs" role="list"></div><div id="run-detail"></div><details class="events"><summary>实际执行阶段</summary><ol id="events"></ol></details></section>
+<footer><span id="session-path"></span><span>本地运行 · 无自动上传</span></footer>
+</main>
+<script id="initial-state" type="application/json">__SIMPLECAE_DATA__</script><script src="workbench.js"></script>
+</body></html>

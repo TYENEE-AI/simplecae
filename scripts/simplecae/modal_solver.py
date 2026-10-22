@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 import re
 import numpy as np
-from scipy.sparse import coo_matrix, kron, eye
+from scipy.sparse import coo_matrix, kron, eye, diags
 
 from .loads import tetra10_basis
 from .thermal_solid_solver import tetra10_gradient
@@ -31,6 +31,13 @@ def write_deck(case, mesh, path, count):
               f"{native_real(m['young_mpa']*1e6)},{native_real(m['poisson'])}",
               "*DENSITY", native_real(m["density_kg_m3"]),
               "*SOLID SECTION,ELSET=EALL,MATERIAL=BODY"]
+    from .modal_mass import compile_masses
+    masses,reports=compile_masses(case,mesh,Path(path).parent)
+    meta['attached_nodal_mass_kg']=masses;meta['attached_mass_reports']=reports
+    for index,(node,mass) in enumerate(sorted(masses.items()),start=1):
+        name=f'ADDMASS{index}'
+        lines += [f'*ELEMENT,TYPE=MASS,ELSET={name}',f'{max(tets)+index},{node}',
+                  f'*MASS,ELSET={name}',native_real(mass)]
     if meta["fixed_dofs"]:
         lines += ["*BOUNDARY", *boundary_lines(meta["fixed_dofs"])]
     # No minimum/maximum frequency filter: preserve every requested low mode.
@@ -160,6 +167,11 @@ from the actual quadratic coordinates, including curved mid-edge nodes.
 
 def audit(directory, material, mesh, parsed, *, free_body=False):
     ids, xyz, stiffness, mass, accurate_mass = matrices(directory, material)
+    added=mesh[-1].get('attached_nodal_mass_kg',{})
+    added_total=sum(added.values())
+    if added:
+        diagonal=diags(np.repeat([added.get(int(n),0.) for n in ids],3),format='csr')
+        mass=mass+diagonal;accurate_mass=accurate_mass+diagonal
     pids, lam, frequencies, shapes = parsed
     if not np.array_equal(ids, pids):
         raise ValueError("Modal matrix and field nodes differ")
@@ -206,9 +218,9 @@ def audit(directory, material, mesh, parsed, *, free_body=False):
     rayleigh_error = np.abs(rayleigh[elastic]/lam[elastic]-1)
     total_mass = float(np.ones(len(ids)) @ (mass[::3, ::3]@np.ones(len(ids))))
     accurate_total_mass = float(np.ones(len(ids)) @ (accurate_mass[::3, ::3]@np.ones(len(ids))))
-    expected_mass = mesh[-1]["mesh_volume_mm3"]*1e-9*material["density_kg_m3"]
+    expected_mass = mesh[-1]["mesh_volume_mm3"]*1e-9*material["density_kg_m3"]+added_total
     with np.load(Path(directory)/"mesh.npz", allow_pickle=False) as d:
-        native_volume_mass = float(np.sum(d["native_volume_quadrature_measures_mm3"]))*1e-9*material["density_kg_m3"]
+        native_volume_mass = float(np.sum(d["native_volume_quadrature_measures_mm3"]))*1e-9*material["density_kg_m3"]+added_total
     total_quadrature_error = abs(total_mass/accurate_total_mass-1)
     checks = {
         "eigen_residual_passed": bool(np.all(residuals < 2e-6)),
@@ -233,7 +245,10 @@ def audit(directory, material, mesh, parsed, *, free_body=False):
             "modal_mass_quadrature_relative_errors": mass_error.tolist(),
             "rigid_shape_relative_residuals": rigid_fraction.tolist(),
             "rigid_mode_indices": np.flatnonzero(rigid_modes).tolist(),
-            "total_mass_kg": total_mass, "geometric_mass_kg": expected_mass,
+            "total_mass_kg": total_mass, "geometric_mass_kg": expected_mass-added_total,
+            "expected_total_mass_kg":expected_mass,
+            "solid_mass_kg":expected_mass-added_total,"attached_mass_kg":added_total,
+            "attached_mass_reports":mesh[-1].get('attached_mass_reports',[]),
             "higher_order_total_mass_kg": accurate_total_mass,
             "native_volume_mass_kg": native_volume_mass,
             "total_mass_quadrature_relative_error": total_quadrature_error,

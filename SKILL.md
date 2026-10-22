@@ -1,6 +1,6 @@
 ---
 name: simplecae
-description: Plan use-driven engineering checks for CAD and robotics agents. Select relevant parts and conditions for structural or thermal FEM, modal screening, robot compliance and motion loads, or material-data fatigue and creep checks; return located CAD iteration feedback with explicit evidence gaps.
+description: Plan use-driven engineering checks for CAD and robotics agents. Consume STEP plus source-bound interface.* manifests and scadpkg identity metadata; return structural, thermal, modal, robot or material-data screening and located CAD feedback with explicit evidence gaps.
 ---
 
 # SimpleCAE
@@ -21,12 +21,18 @@ For missing material, mounting or load locations, use `prepare MODEL --out FRESH
 
 ## 2. Execute and iterate / 执行与迭代
 
+### 与 SimpleCADAPI / text-to-cad 联用
+
+In a joint workflow, SimpleCAE owns strength, stiffness, thermal, modal, buckling and fatigue judgments; route analysis here instead of SimpleCADAPI's standalone gmsh/CalculiX examples. For a request with known operating conditions, write the required `interface.*` regions, partition locations and expected face counts into the CAD requirements before modeling, even if the CAD skill normally loads analysis guidance later. Read only the references needed for that check. Use STEP plus source-bound interfaces for this joint geometry handoff; apply tags after all CAD features. See [native handoff](references/simplecad-handoff.md) and [partition recipes](references/cad-partitioning.md).
+
+Keep `indeterminate`, `needs_information` and `unsupported` as valid conclusions. Structural qualification still needs at least three mesh levels and two successive convergence comparisons; a requested safety factor does not override that evidence. Return geometric changes to the corresponding CAD skill, then regenerate, rebind and recheck the same physical contract.
+
 Prefer [one-file Agent tasks](references/agent-tasks.md) for mixed checks and CAD iteration:
 
-```powershell
-python scripts/simplecae_cli.py task start TASK.json --out WORKSPACE --brief
-python scripts/simplecae_cli.py task run WORKSPACE --check CHECK --budget-seconds 3000 --brief
-python scripts/simplecae_cli.py task status WORKSPACE --brief
+```text
+<SIMPLECAE_PY> scripts/simplecae_cli.py task start TASK.json --out out/cae/WORKSPACE --brief
+<SIMPLECAE_PY> scripts/simplecae_cli.py task run out/cae/WORKSPACE --check CHECK --budget-seconds 3000 --brief
+<SIMPLECAE_PY> scripts/simplecae_cli.py task status out/cae/WORKSPACE --brief
 ```
 
 `task start` records the plan and creates Viewer without solving. The Agent selects a check explicitly; `task run` uses the bounded `design-check` workflow. Read [bounded design checks](references/design-checks.md) before selecting FEM. Explain loads, materials, support freedoms, task probes and criteria; review the boundary preview before solving. `calculation` remains distinct from FEM, and external formulas are recorded with their derivation and applicability.
@@ -77,5 +83,7 @@ Use `task record` only for an actually performed external check, with source-bou
 | Viewer, storage, metrology or the full operational reference | [Viewer](references/viewer.md), [storage](references/storage.md), [interface metrology](references/interface-metrology.md), [workflow details](references/workflow-details.md) |
 
 Bootstrap once only when runtime dependencies are missing; use the host-specific Python and an explicitly discovered solver. Ordinary usage does not require full pytest, license audits, `verify_release` or release receipts. Native Windows loader failure is an environment error: retain its log and repair the execution environment before retrying.
+
+Resolve `<SIMPLECAE_PY>` using the [Windows/Linux/macOS table](references/platform-installation.md); keep all three toolchains isolated. For the `sca-simplecae` addon, run `sca addon check simplecae` before first use and resolve a failed runtime probe before analysis. SimpleCADAPI models/captures the package, its native environment exports STEP and final `interface.*` selections, then SimpleCAE reads millimetres in the explicitly declared part-local/world frame. Package identity metadata is retained; no foreign BREP is read and no geometry is modified here. See SimpleCADAPI's `references/scadpkg-format.md` for its package contract.
 
 Default compact storage losslessly retains numerical evidence after readers stop. Retain failed attempts. Clean caches only under the user's retention instructions, after required reviews and retests. User model/data files are not executable solver code. Do not upload or publish unless requested.

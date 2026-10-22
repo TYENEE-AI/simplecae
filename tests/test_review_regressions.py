@@ -24,7 +24,7 @@ def envelope(child):
 def test_buckling_failure_is_the_envelope_bottleneck():
     child=result();child['case']['buckling']={'enabled':True}
     child['status']=child['assessment']['status']='fail_under_stated_model'
-    child['assessment']['buckling']={'mesh_converged':True,'reference_utilization':1.312}
+    child['assessment']['buckling']={'mesh_converged':True,'reference_utilization':1.312,'reference_normalization_verified':True}
     single=design_signal(child);combined=design_signal(envelope(child))
     assert combined['valid_for_comparison'] and combined['feasible_under_stated_model'] is False
     assert combined['bottleneck_margin']==pytest.approx(single['bottleneck_margin'])
@@ -33,6 +33,7 @@ def test_buckling_failure_is_the_envelope_bottleneck():
 
 
 @pytest.mark.parametrize('buckling',[{}, {'mesh_converged':False,'reference_utilization':.5},
+    {'mesh_converged':True,'reference_utilization':.5},
     {'mesh_converged':True,'reference_utilization':None},
     {'mesh_converged':True,'reference_utilization':float('nan')}])
 def test_unresolved_buckling_withholds_envelope_reward(buckling):

@@ -2,6 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 import re
+import time
 import numpy as np
 from .case import write_json
 from .solver import write_deck, execute
@@ -11,11 +12,11 @@ def cload_lines(forces):
     return [f"{n},{a+1},{float(v):.12g}" for n,f in sorted(forces.items()) for a,v in enumerate(f) if abs(v)>1e-14]
 
 
-def write_buckling_deck(c, mesh, path):
+def write_buckling_deck(c, mesh, path, reference_scale=1.):
     write_deck(c,mesh,path)
     prefix = path.read_text(encoding="ascii").split("*STEP\n",1)[0]
     fixed = {int(n):np.array(f) for n,f in mesh[-1].get("fixed_nodal_forces",{}).items()}
-    variable = {n:f-fixed.get(n,np.zeros(3)) for n,f in mesh[3].items()}
+    variable = {n:reference_scale*(f-fixed.get(n,np.zeros(3))) for n,f in mesh[3].items()}
     if not any(np.linalg.norm(f)>1e-12 for f in variable.values()):
         raise ValueError("buckling needs a nonzero scalable reference load pattern")
     lines = [prefix.rstrip()]
@@ -57,10 +58,37 @@ def parse_buckling_dat(path):
 
 
 def run_buckling(c,mesh,out:Path,ccx,timeout):
-    inp = out/"buckling.inp"
-    write_buckling_deck(c,mesh,inp)
-    solver = execute(ccx,inp,timeout,analysis_type="buckling")
-    factors,modes = parse_buckling_dat(inp.with_suffix(".dat"))
+    # CCX can skip factors below ~1 (upstream issue #74). Independently
+    # renormalize only the eigenproblem's scalable reference load and compare
+    # factors in ORIGINAL load units. The static service case, fixed prestress,
+    # task contract and acceptance load remain unchanged.
+    started=time.monotonic();scale=1.;previous=None;attempts=[];verified=False
+    for index in range(4):
+        inp=out/('buckling.inp' if index==0 else f'buckling-normalized-{index}.inp')
+        write_buckling_deck(c,mesh,inp,scale)
+        remaining=timeout-(time.monotonic()-started)
+        if remaining<=0:raise RuntimeError('Buckling normalization exhausted its shared native time allowance; retained all attempts')
+        solver=execute(ccx,inp,remaining,analysis_type='buckling')
+        raw,modes=parse_buckling_dat(inp.with_suffix('.dat'))
+        factors=[dict(row,load_factor=row['load_factor']*scale) for row in raw]
+        positive=sorted(row['load_factor'] for row in factors if row['load_factor']>0)
+        raw_positive=[row['load_factor'] for row in raw if row['load_factor']>0]
+        stable=(previous is not None and len(previous)==len(positive) and bool(positive)
+                and all(abs(a-b)<=1e-3*max(abs(a),abs(b)) for a,b in zip(previous,positive)))
+        # 100 is an eigensolver conditioning target, never an acceptance factor.
+        # Always verify a second scale, including results initially above one.
+        verified=stable and min(raw_positive,default=0)>=100
+        attempts.append({'reference_scale':scale,'raw_factors':raw,'original_load_factors':factors,
+                         'scale_invariant':stable,'solver':solver})
+        write_json(out/'buckling-normalization.json',{'verified':verified,'attempts':attempts,
+            'meaning':'Numerical reference normalization only; original service load and fixed loads unchanged.',
+            'upstream_issue':'https://github.com/Dhondtguido/CalculiX/issues/74'})
+        if verified:break
+        previous=positive
+        if not raw_positive:break
+        scale*=min(.01,min(raw_positive)/10000.)
+    if not verified:
+        raise RuntimeError('Buckling lowest positive modes could not be qualified by reference-scale invariance; inspect buckling-normalization.json. No stability pass is available.')
     node_ids = sorted(mesh[0])
     available = []
     for m,field in modes.items():
@@ -76,6 +104,7 @@ def run_buckling(c,mesh,out:Path,ccx,timeout):
     if set(available) != {f["mode"] for f in factors}:
         raise RuntimeError("buckling factors and eigenvector coverage do not match")
     result = {"analysis":"elastic_eigenvalue_buckling", "factors":factors,
+              "reference_scale":scale,"reference_normalization_verified":verified,"normalization_attempts":len(attempts),
               "lowest_positive_factor":min((f["load_factor"] for f in positive),default=None),
               "available_modes":available,"solver":solver,
               "limitations":["Linear bifurcation estimate of the stated ideal model, not nonlinear collapse capacity.",

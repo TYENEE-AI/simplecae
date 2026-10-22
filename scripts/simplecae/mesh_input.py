@@ -40,37 +40,118 @@ def triangle_overlap(a,b,tol):
     return True
 
 
-def check_self_intersection(mesh,pair_budget=600000):
+def _segment_triangle(p, q, triangle, tol):
+    """Closed segment/triangle test, including coplanar segments.
+
+    Used only for the edge opposite a shared vertex, so the legitimate shared
+    point is never itself a candidate intersection.
+    """
+    a, b, c = triangle
+    normal = np.cross(b-a, c-a)
+    normal /= np.linalg.norm(normal)
+    dp, dq = np.dot(p-a, normal), np.dot(q-a, normal)
+    if min(dp, dq) > tol or max(dp, dq) < -tol:
+        return False
+    drop = int(np.argmax(np.abs(normal)))
+    tri = np.delete(triangle-a, drop, axis=1)
+    start, end = np.delete(p-a, drop), np.delete(q-a, drop)
+    cross = lambda u, v: u[0]*v[1]-u[1]*v[0]
+    orientation = np.sign(cross(tri[1], tri[2]))
+    if abs(dp) <= tol and abs(dq) <= tol:
+        # Clip the segment against the three oriented triangle half-planes.
+        lo, hi = 0., 1.
+        for i in range(3):
+            edge = tri[(i+1)%3]-tri[i]
+            allowance = tol*np.linalg.norm(edge)
+            f0 = orientation*cross(edge, start-tri[i])+allowance
+            f1 = orientation*cross(edge, end-tri[i])+allowance
+            if f0 < 0 and f1 < 0: return False
+            if f0 < 0: lo = max(lo, f0/(f0-f1))
+            if f1 < 0: hi = min(hi, f0/(f0-f1))
+        return lo <= hi
+    t = dp/(dp-dq)
+    if not 0 <= t <= 1: return False
+    point = start+t*(end-start)
+    return all(orientation*cross(tri[(i+1)%3]-tri[i], point-tri[i]) >=
+               -tol*np.linalg.norm(tri[(i+1)%3]-tri[i]) for i in range(3))
+
+
+def adjacent_pair_intersects(a, b, shared, tol):
+    """Test overlap beyond shared topology; never contract skinny triangles."""
+    if len(shared) == 3: return True  # Duplicate faces are not adjacency.
+    if len(shared) == 2:
+        p, q = (a[i] for i, _ in shared)
+        ra = a[next(i for i in range(3) if i not in {s[0] for s in shared})]
+        rb = b[next(i for i in range(3) if i not in {s[1] for s in shared})]
+        edge = q-p
+        na, nb = np.cross(edge, ra-p), np.cross(edge, rb-p)
+        na /= np.linalg.norm(na); nb /= np.linalg.norm(nb)
+        # Noncoplanar triangles intersect only along their common edge.
+        # Test both distances, important for very different triangle heights.
+        if abs(np.dot(rb-p, na)) > tol or abs(np.dot(ra-p, nb)) > tol:
+            return False
+        return np.dot(na, nb) > 0  # Same-side coplanar fold.
+    if len(shared) == 1:
+        ia, ib = shared[0]
+        ea, eb = a[[i for i in range(3) if i != ia]], b[[i for i in range(3) if i != ib]]
+        return _segment_triangle(*ea, b, tol) or _segment_triangle(*eb, a, tol)
+    return triangle_overlap(a, b, tol)
+
+
+def check_self_intersection(mesh,pair_budget=None,*,algorithm='topology'):
+    if algorithm not in ('topology','legacy'):
+        raise ValueError('intersection algorithm must be topology or legacy')
     triangles=np.asarray(mesh.triangles,dtype=float)
+    if pair_budget is None:pair_budget=max(600000,12*len(triangles))
+    if type(pair_budget) is not int or pair_budget<0:raise ValueError('pair budget must be a nonnegative integer')
     centers=triangles.mean(axis=1)
     radii=np.linalg.norm(triangles-centers[:,None,:],axis=2).max(axis=1)
+    max_radius=float(radii.max())
+    lower,upper=triangles.min(axis=1),triangles.max(axis=1)
+    edge_lengths=np.linalg.norm(np.roll(triangles,-1,axis=1)-triangles,axis=2)
     tree=cKDTree(centers)
     span=max(float(np.linalg.norm(np.ptp(mesh.vertices,axis=0))),1.)
     tol=span*1e-10
     count=0
     for i in range(len(triangles)):
-        for j in tree.query_ball_point(centers[i],radii[i]+radii.max()+tol):
-            if j<=i or np.linalg.norm(centers[i]-centers[j])>radii[i]+radii[j]+tol:
-                continue
-            if np.any(triangles[i].max(axis=0)<triangles[j].min(axis=0)-tol) or np.any(triangles[j].max(axis=0)<triangles[i].min(axis=0)-tol):
-                continue
+        candidates=np.asarray(tree.query_ball_point(centers[i],radii[i]+max_radius+tol),dtype=int)
+        candidates=candidates[candidates>i]
+        candidates=candidates[(np.linalg.norm(centers[i]-centers[candidates],axis=1)<=radii[i]+radii[candidates]+tol)
+                              & np.all(upper[i]>=lower[candidates]-tol,axis=1)
+                              & np.all(upper[candidates]>=lower[i]-tol,axis=1)]
+        for j in candidates:
             count+=1
             if count>pair_budget:
                 raise ValueError("surface-intersection checking exceeds pair budget; reduce tessellation or provide STEP")
             a,b=triangles[i],triangles[j]
-            if set(mesh.faces[i]) & set(mesh.faces[j]):
+            shared=[(ia,ib) for ia,va in enumerate(mesh.faces[i]) for ib,vb in enumerate(mesh.faces[j]) if va==vb]
+            if algorithm=='legacy' and shared:
                 # Adjacent faces must touch along their shared topology. Test
                 # their interiors after a declared tiny contraction instead.
                 a=centers[i]+(a-centers[i])*(1-1e-6)
                 b=centers[j]+(b-centers[j])*(1-1e-6)
-            if triangle_overlap(a,b,tol):
-                raise ValueError(f"intersecting surface triangles {i} and {j}; no automatic topology repair")
-    return {"candidate_pairs_checked":count,"length_tolerance_mm":tol,
-            "adjacent_face_interior_contraction":1e-6,"passed":True,
+            local_tol=max(edge_lengths[i].max(),edge_lengths[j].max())*1e-12
+            intersects=(triangle_overlap(a,b,tol) if algorithm=='legacy' else adjacent_pair_intersects(a,b,shared,local_tol))
+            if intersects:
+                from .diagnostics import WorkflowError
+                areas=np.linalg.norm(np.cross(np.array([a,b])[:,1]-np.array([a,b])[:,0],np.array([a,b])[:,2]-np.array([a,b])[:,0]),axis=1)/2
+                aspects=2*areas/np.array([edge_lengths[i].max(),edge_lengths[j].max()])**2
+                raise WorkflowError(f"intersecting surface triangles {i} and {j}; no automatic topology repair",
+                    'surface_self_intersection',next_action='inspect_triangle_pair_or_export_step',
+                    details={'triangle_ids':[int(i),int(j)],'coordinates_mm':[a.tolist(),b.tolist()],
+                             'areas_mm2':areas.tolist(),'minimum_altitude_to_longest_edge':float(aspects.min()),
+                             'local_tolerance_mm':local_tol,
+                             'advice':'Inspect the reported overlap. For sliver tessellation, try a coarser CAD mesh export or native STEP; do not disable validation.'})
+    return {"candidate_pairs_checked":count,"pair_budget":pair_budget,"length_tolerance_mm":tol,
+            "broad_phase_tolerance_mm":tol,
+            "algorithm":algorithm,"adjacent_face_interior_contraction":1e-6 if algorithm=='legacy' else None,
+            "local_relative_tolerance":1e-12 if algorithm=='topology' else None,"passed":True,
             "meaning":"finite-precision triangle intersection check; features below tolerance are unresolved"}
 
 
 def load_surface(model):
+    from .input_guidance import require_fem_format
+    require_fem_format(model['path'])
     import trimesh
     path=Path(model['path'])
     suffix=path.suffix.lower()

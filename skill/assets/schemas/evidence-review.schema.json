@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "bindings",
+    "items",
+    "whole_product_rating_available",
+    "certification_available"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "simplecae-evidence-review-1.0"
+    },
+    "bindings": {
+      "type": "object"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "whole_product_rating_available": {
+      "const": false
+    },
+    "certification_available": {
+      "const": false
+    }
+  },
+  "additionalProperties": true
+}

@@ -91,16 +91,9 @@ def _case_paths(value, base, sources, inspected=None):
 
 @contextmanager
 def _lock(session):
-    lock = Path(session) / 'task.lock'
-    try:
-        with lock.open('x', encoding='utf-8') as stream:
-            stream.write('One task mutation at a time; remove only after confirming its worker has stopped.')
-    except FileExistsError:
-        raise ValueError('Task is busy or has an interrupted operation; inspect task.lock and running workers') from None
-    try:
+    from .process_lock import mutation_lock
+    with mutation_lock(Path(session)/'task.lock',session):
         yield
-    finally:
-        lock.unlink()
 
 
 def _load(session, current=True):
@@ -141,7 +134,10 @@ def start_task(path, out, *, viewer_session=None, continue_from=None):
     plan = {k: copy.deepcopy(v) for k, v in manifest.items() if k not in extras}
     plan['schema_version'] = SCHEMA
     validate_plan(plan)
-    sources = set(_paths(manifest.get('sources'), path.parent)) | {path}
+    # The task manifest itself is a revision-bound source. Planning may happen
+    # before CAD/material files exist; do not require a fabricated placeholder.
+    source_values=manifest.get('sources',[])
+    sources = set(_paths(source_values, path.parent) if source_values != [] else []) | {path}
     cases = manifest.get('cases', {})
     if not isinstance(cases, dict):
         raise ValueError('cases must map check ids to inline cases or case file paths')
@@ -361,10 +357,13 @@ def _analysis_note(review, usage):
             'missing_result_criteria': usage.get('missing_result_criteria', []),
             'unresolved_result_criteria': usage.get('unresolved_result_criteria', [])}
     if execution.get('recovery'):note['recovery']=execution['recovery']
+    distributions=[f for f in review.get('feedback',{}).get('findings',[]) if f.get('kind')=='load_distribution']
+    if distributions:note['load_distribution_diagnostics']=distributions
     if review.get('result'):
         raw = _read(review['result']['path'])
         note['result_path'] = review['result']['path']
         if raw.get('error'):note['error'] = raw['error']
+        if raw.get('singularity_diagnostic'):note['singularity_diagnostic']=raw['singularity_diagnostic']
         diagnostics=[]
         for pose in raw.get('poses', []):
             for component in pose.get('components', []):
@@ -386,11 +385,27 @@ def _analysis_note(review, usage):
             note['component_diagnostics_truncated']=len(diagnostics)>6
     else:
         raw = None
+    if usage.get('missing_result_criteria'):
+        # Derived diagnostics only: adding fields to the persisted usage
+        # contract would invalidate existing hash-bound reviews.
+        available = {}
+        if raw is not None and execution['state'] == 'completed':
+            from .design_check import feedback as result_feedback
+            available = result_feedback(raw, review['context'], 'completed')
+        note['available_result_criteria'] = sorted(set(available.get('criterion_assessments', {})) |
+                                                   set(available.get('utilizations', {})))
+        note['criteria_guidance'] = ('Inspect the exact available keys and their physical meaning. Correct a mistaken reference in a fresh task revision; '
+                                    'an unmeasured requirement remains missing. No automatic mapping or acceptance change was performed.')
     if execution['state'] == 'needs_explicit_model':
         note.update(focus='analysis_depth', message='声明的接触、预紧或屈曲需要明确选择详细分析；没有删去这些物理。',
                     detailed_features=review.get('detailed_features', []))
         return note
     if raw is not None:
+        from .design_check import joint_displacement_guidance
+        missing_joint = joint_displacement_guidance(raw, None, {})
+        if missing_joint and missing_joint.get('evidence_status')=='needs_information':
+            note.update(missing_joint)
+            return note
         from .signals import structural_validity_guidance
         if guidance:=structural_validity_guidance(raw):
             note.update(guidance)
@@ -459,10 +474,11 @@ def task_status(session, *, export=True):
         history = histories[check['id']]
         latest = history[-1] if history else None
         outcome = 'insufficient_evidence' if changed else latest['outcome'] if latest else 'pending'
-        action = ('start_fresh_revision' if changed else 'continue' if outcome == 'pass'
+        action = ('start_fresh_revision' if changed
                   else 'choose_analysis_depth' if latest and latest.get('analysis', {}).get('focus') == 'analysis_depth'
                   else 'review_joint_compliance' if latest and latest.get('analysis', {}).get('focus') == 'joint_compliance'
                   else 'review_model_validity' if latest and latest.get('analysis', {}).get('focus') == 'model_validity'
+                  else 'continue' if outcome == 'pass'
                   else 'review_failed_check' if outcome == 'fail'
                   else 'resolve_evidence_or_analysis' if outcome == 'insufficient_evidence'
                   else 'unsupported' if check['decision'] == 'unsupported'

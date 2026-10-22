@@ -12,8 +12,11 @@ from .loads import distribute_wrench, integrate_gravity
 
 @contextmanager
 def session(step: Path | None = None, model=None):
+    from .input_guidance import require_fem_format
+    if step is not None: require_fem_format(step)
     import gmsh
-    gmsh.initialize()
+    from simplecae import gmsh_runtime
+    gmsh_runtime.initialize()
     try:
         gmsh.option.setNumber("General.Terminal", 0)
         gmsh.option.setNumber("General.NumThreads", 1)
@@ -21,16 +24,32 @@ def session(step: Path | None = None, model=None):
         gmsh.model.add("simplecae")
         gmsh._simplecae_source=None
         gmsh._simplecae_solid_id=None
+        gmsh._simplecae_solid_label=None
+        gmsh._simplecae_solid_count=0
         if step is not None:
             if step.suffix.lower() in ('.step','.stp'):
                 gmsh.model.occ.importShapes(str(step))
                 gmsh.model.occ.synchronize()
+                available=gmsh.model.getEntities(3)
+                gmsh._simplecae_solid_count=len(available)
+                if model and model.get('interface_manifest'):
+                    from .bridge import manifest_model
+                    model=manifest_model(model['interface_manifest'],model)
+                if model and model.get('interface_step_label'):
+                    matches=[tag for _,tag in available if gmsh.model.getEntityName(3,tag)==model['interface_step_label']]
+                    if len(matches)!=1: raise ValueError('manifest STEP label must select exactly one source solid')
+                    if model.get('solid_id') and model['solid_id']['id']!=matches[0]: raise ValueError('manifest STEP label contradicts model.solid_id')
+                    model=dict(model,solid_id={'id':matches[0],'geometry_sha256':sha256(step)})
+                if len(available)==1:
+                    gmsh._simplecae_solid_id=available[0][1]
+                    gmsh._simplecae_solid_label=gmsh.model.getEntityName(*available[0])
                 if model and model.get('solid_id'):
                     spec=model['solid_id']
                     if spec['geometry_sha256']!=sha256(step):raise ValueError('solid_id belongs to a different STEP hash; inspect again')
                     available=gmsh.model.getEntities(3);selected=(3,spec['id'])
                     if selected not in available:raise ValueError('STEP solid_id does not exist')
                     gmsh._simplecae_solid_id=spec['id']
+                    gmsh._simplecae_solid_label=gmsh.model.getEntityName(3,spec['id'])
                     if len(available)>1:
                         isolated=gmsh.model.occ.copy([selected])
                         gmsh.model.occ.remove(available,recursive=True)
@@ -40,7 +59,25 @@ def session(step: Path | None = None, model=None):
                 gmsh._simplecae_source=import_surface(gmsh,model or {'path':str(step)})
         yield gmsh
     finally:
-        gmsh.finalize()
+        gmsh_runtime.finalize()
+
+
+def face_geometry(g, tag):
+    face={"id":tag,"type":g.model.getType(2,tag),"area_mm2":g.model.occ.getMass(2,tag),
+          "centroid_mm":list(g.model.occ.getCenterOfMass(2,tag)),"bbox_mm":list(g.model.getBoundingBox(2,tag)),
+          "normal":None}
+    if face['type'].lower()=='plane':
+        uv=g.model.getParametrization(2,tag,face['centroid_mm'])
+        # Gmsh's OCC getNormal already applies the face orientation. Multiplying
+        # by the volume's signed boundary again would invert half the faces.
+        normal=np.asarray(g.model.getNormal(tag,uv),dtype=float)
+        norm=np.linalg.norm(normal)
+        if np.isfinite(norm) and norm>0:face['normal']=(normal/norm).tolist()
+    elif face['type'].lower()=='cylinder':
+        from .interface_check import cylinder_axis
+        try:face['analytic_cylinder']=cylinder_axis(g,tag)
+        except ValueError as exc:face['analytic_axis_error']=str(exc)
+    return face
 
 
 def inventory(g, step: Path):
@@ -64,16 +101,18 @@ def inventory(g, step: Path):
         "geometry_sha256": sha256(step), "source_step": str(step.resolve()), "units": "mm",
         "gmsh_version": g.__version__, "solid_count": 1, "volume_mm3": volume,
         "source_solid_id":getattr(g,'_simplecae_solid_id',None),
+        "source_solid_label":getattr(g,'_simplecae_solid_label',None),
+        "source_solid_count":getattr(g,'_simplecae_solid_count',1),
         "center_of_mass_mm": list(g.model.occ.getCenterOfMass(3,volumes[0][1])),
         "bbox_mm": [bb[:3], bb[3:]], "faces": [
-            {"id": t, "type": g.model.getType(2, t), "area_mm2": g.model.occ.getMass(2, t),
-             "centroid_mm": list(g.model.occ.getCenterOfMass(2, t)),
-             "bbox_mm": list(g.model.getBoundingBox(2, t))} for t in surfaces
+            face_geometry(g,t) for t in surfaces
         ],
     }
 
 
 def inspect(step: Path, out: Path, model=None,*,analytic_axes=False):
+    from .input_guidance import require_fem_format
+    require_fem_format(step)
     if step.suffix.lower() not in (".step", ".stp", ".glb", ".stl", ".obj") or not step.is_file():
         raise ValueError("inspect accepts an existing STEP, GLB, STL or OBJ file")
     with session(step,model) as g:
@@ -83,11 +122,7 @@ def inspect(step: Path, out: Path, model=None,*,analytic_axes=False):
             result['interfaces']=resolve_interfaces(model['interface_manifest'],result)
         if analytic_axes:
             if step.suffix.lower() not in ('.step','.stp'):raise ValueError('analytic cylinder inspection requires native STEP/STP')
-            from .interface_check import cylinder_axis
-            for face in result['faces']:
-                if face['type'].lower()=='cylinder':
-                    try:face['analytic_cylinder']=cylinder_axis(g,face['id'])
-                    except ValueError as exc:face['analytic_axis_error']=str(exc)
+            # Native face inventory includes analytic axes by default.
     write_json(out, result)
     return result
 
@@ -126,6 +161,16 @@ def select_faces(info, spec):
         if not set(spec["ids"]).issubset(available):
             raise ValueError("selector contains nonexistent face IDs")
         selected = spec["ids"]
+    elif spec['type']=='by_normal':
+        direction=np.asarray(spec['dir'],dtype=float);direction/=np.linalg.norm(direction)
+        threshold=np.cos(np.deg2rad(spec['max_angle_deg']))
+        selected=[f['id'] for f in info['faces'] if f.get('normal') is not None and np.dot(f['normal'],direction)>=threshold-1e-12]
+    elif spec['type']=='plane' and 'normal' in spec:
+        normal=np.asarray(spec['normal'],dtype=float);normal/=np.linalg.norm(normal)
+        tol=spec.get('tol_mm',1e-4)
+        selected=[f['id'] for f in info['faces'] if f['type']=='Plane' and f.get('normal') is not None
+                  and abs(abs(np.dot(f['normal'],normal))-1)<=1e-8
+                  and abs(np.dot(f['centroid_mm'],normal)-spec['offset_mm'])<=tol]
     else:
         axis = "xyz".index(spec["axis"])
         position, tol = spec["position_mm"], spec.get("tolerance_mm", 1e-4)
@@ -288,6 +333,7 @@ def make_mesh(c, h, out: Path, allow_free_body=False, load_to_support_axes=None)
             surfaces[f] = np.asarray(raw, dtype=int).reshape((-1, 6))[:, sperm].tolist()
         from .local_mesh import measure_surfaces
         refinements=measure_surfaces(refinements,surfaces,coords)
+        distribution_reports=[]
         for spec in loads:
             integrals, area, first = {}, 0., np.zeros(3)
             for f in load_faces[spec["name"]]:
@@ -300,8 +346,20 @@ def make_mesh(c, h, out: Path, allow_free_body=False, load_to_support_axes=None)
             if area <= 0:
                 raise ValueError("load area must be positive")
             force = np.array(spec["total_force_n"], dtype=float)
-            applied, center, couple = distribute_wrench(coords, integrals, force,
-                spec.get("total_moment_n_mm", [0.,0.,0.]), spec.get("application_point_mm"))
+            distribution_report={'name':spec['name'],'face_ids':load_faces[spec['name']]}
+            try:
+                applied, center, couple = distribute_wrench(coords, integrals, force,
+                    spec.get("total_moment_n_mm", [0.,0.,0.]), spec.get("application_point_mm"),
+                    distribution=spec.get('distribution','consistent'),
+                    allow_opposite_traction=spec.get('allow_opposite_traction',False),diagnostics=distribution_report)
+            except ValueError as exc:
+                if hasattr(exc,'diagnostic'):
+                    exc.diagnostic['details']['load_distribution_path']=str((out/'load_distribution.json').resolve())
+                raise
+            finally:
+                # Persist attempted distributions even when the physical guard refuses a solve.
+                distribution_reports.append(distribution_report)
+                write_json(out/'load_distribution.json',{'loads':distribution_reports})
             shared_faces=set(load_faces[spec['name']]) & support_union
             if shared_faces:
                 shared_nodes={n for face in shared_faces for tri in surfaces[face] for n in tri}
@@ -313,7 +371,8 @@ def make_mesh(c, h, out: Path, allow_free_body=False, load_to_support_axes=None)
             load_reports.append({"name": spec["name"], "face_ids": load_faces[spec["name"]],
                                  "area_mm2": area, "centroid_mm": (first/area).tolist(),
                                  "total_force_n": force.tolist(), "traction_mpa": (force/area).tolist(),
-                                 "total_moment_n_mm_about_patch_centroid": couple.tolist(), "scalable": spec.get("scalable",True)})
+                                 "total_moment_n_mm_about_patch_centroid": couple.tolist(), "scalable": spec.get("scalable",True),
+                                 'distribution_diagnostic':{k:v for k,v in distribution_report.items() if k!='nodes'}})
         gravity_mass = None
         if c.get("gravity"):
             gravity = integrate_gravity(conn,det,ip,iw,c["material"]["density_kg_m3"],c["gravity"]["acceleration_m_s2"])

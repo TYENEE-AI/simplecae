@@ -22,6 +22,22 @@ a compatibility alias for ordinary installation, without a receipt requirement.
 Complete runtime setup in the installed folder separately. Required entry files,
 valid project metadata, path containment and copy errors still matter. Downloaded
 solver archive integrity and numerical result validity checks are unchanged.
+Bootstrap already performs its runtime check. Do not chain `runtime_ready.py`,
+`doctor`, `addon_probe.py`, `pip check`, source-hash comparisons and quickstart as
+additional ordinary-installation gates. Use the relevant diagnostic only when
+setup reports a problem or the selected interpreter/solver changes. An addon
+host's `sca addon check simplecae` is its native readiness entry point; a
+standalone skill does not need the addon host installed just to run that check.
+Bootstrap runs pip only for missing/incompatible Python dependencies or a
+mismatched Python installation source. Native shared-library/loading failures
+and unexpected inspection errors stop with a diagnostic without reinstalling
+Python packages. After Python setup, readiness is checked again before proceeding.
+Windows solver downloads have a 3000-second worker limit, configurable with
+`bootstrap.ps1 -DownloadTimeoutSeconds SECONDS`. Failed downloads retain unique
+`.partial` files; retrying uses a fresh file. Only a complete, SHA-256-verified
+download becomes the reusable archive. A pre-existing invalid archive remains
+rejected: preserve and move it aside before retrying. This download limit is
+separate from the analysis budget and does not bound pip installation.
 
 Install the skill files first, then bootstrap in that installed folder once. Do
 not bootstrap both the checkout and the installed copy. When an Agent-bundled
@@ -64,8 +80,9 @@ profile/configuration rules.
 [OMP discovery documentation](https://github.com/can1357/oh-my-pi/blob/main/docs/config-usage.md)
 
 After installation, reload/restart host skill discovery and ask it to use
-SimpleCAE explicitly. First verify `python -m simplecae --version` in the
-configured runtime, then proceed to the user task. One quickstart example is optional;
+SimpleCAE explicitly. If the host's selected runtime is uncertain, verify
+`python -m simplecae --version` in that runtime, then proceed to the user task.
+One quickstart example is optional;
 full pytest, all examples and release/license audits are maintainer or learning
 workflows, not installation gates. Discovery-path
 compatibility is separate from an end-to-end test of a particular Agent/model;

@@ -1,0 +1,15 @@
+{
+  "output_path": "simplecad-assembly.step",
+  "schema": "AP242DIS",
+  "definition_ids": [
+    "simplecae.reference.half",
+    "simplecae.reference.two_bodies"
+  ],
+  "occurrence_count": 2,
+  "material_ids": [],
+  "metadata_item_count": 4,
+  "limitations": [
+    "Connector, constraint, grounding, revision, content-hash, and placement semantics are encoded as named AP242 descriptive property items containing deterministically sorted JSON.",
+    "The evaluated BREP and product structure are transferred through STEPCAF; canonical feature history is not reconstructed as AP242 features."
+  ]
+}

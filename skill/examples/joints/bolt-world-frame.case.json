@@ -1,0 +1,194 @@
+{
+  "schema_version": "assembly-1.0",
+  "bodies": [
+    {
+      "name": "housing",
+      "model": {
+        "path": "../assemblies/half-bar.step"
+      },
+      "material": {
+        "name": "prescribed_reference",
+        "source": "Mathematical steel-like reference, not certified component data",
+        "youngs_modulus_mpa": 200000.0,
+        "poisson_ratio": 0.0,
+        "yield_strength_mpa": 200.0,
+        "failure_criterion": "von_mises_yield",
+        "calibration": {
+          "kind": "mathematical_reference",
+          "reference": "Prescribed elastic/yield constants",
+          "applicability": "Numerical verification only; no physical material qualification"
+        }
+      },
+      "placement": {
+        "translation_mm": [
+          17,
+          -23,
+          11
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          1.5707963267948966
+        ]
+      }
+    },
+    {
+      "name": "cap",
+      "model": {
+        "path": "../assemblies/half-bar.step"
+      },
+      "material": {
+        "name": "prescribed_reference",
+        "source": "Mathematical steel-like reference, not certified component data",
+        "youngs_modulus_mpa": 200000.0,
+        "poisson_ratio": 0.0,
+        "yield_strength_mpa": 200.0,
+        "failure_criterion": "von_mises_yield",
+        "calibration": {
+          "kind": "mathematical_reference",
+          "reference": "Prescribed elastic/yield constants",
+          "applicability": "Numerical verification only; no physical material qualification"
+        }
+      },
+      "placement": {
+        "translation_mm": [
+          17,
+          27,
+          11
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          1.5707963267948966
+        ]
+      },
+      "mesh_size_factor": 0.8
+    }
+  ],
+  "supports": [
+    {
+      "name": "clamp",
+      "body": "housing",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0
+      }
+    },
+    {
+      "name": "guide",
+      "body": "cap",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0
+      },
+      "dofs": [
+        1,
+        3
+      ]
+    }
+  ],
+  "loads": [
+    {
+      "name": "end",
+      "body": "cap",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 50
+      },
+      "total_force_n": [
+        0,
+        200.0,
+        0
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "name": "joint",
+      "type": "frictionless_contact",
+      "master": {
+        "body": "housing",
+        "selector": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 50
+        }
+      },
+      "slave": {
+        "body": "cap",
+        "selector": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 0
+        }
+      },
+      "normal": [
+        0,
+        1,
+        0
+      ],
+      "normal_stiffness_n_mm3": 100000.0,
+      "calibration": {
+        "reference": "Prescribed numerical penalty law p=100000*penetration MPa",
+        "applicability": "Mathematical reference only; no hardware calibration"
+      }
+    }
+  ],
+  "criteria": {
+    "strength_safety_factor": 2.0,
+    "max_displacement_mm": 0.1
+  },
+  "mesh": {
+    "sizes_mm": [
+      5,
+      4,
+      3
+    ]
+  },
+  "conditions": {
+    "material_verified": true,
+    "dimensions_verified": true,
+    "supports_represent_actual_mounting": true,
+    "load_pattern_verified": true,
+    "self_weight_negligible": true,
+    "connection_parameters_verified": true
+  },
+  "provenance": {
+    "task_id": "assembly-reference",
+    "revision": "base"
+  },
+  "notes": "Mathematical reference only; explicit axial bolt, ideal fixtures and prescribed planar contact law. No physical product qualification.",
+  "bolts": [
+    {
+      "name": "axial-fastener",
+      "master": {
+        "body": "housing",
+        "selector": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 0
+        }
+      },
+      "slave": {
+        "body": "cap",
+        "selector": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 50
+        }
+      },
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "axial_stiffness_n_mm": 100000.0,
+      "preload_n": 1000.0,
+      "allowable_tension_n": 2000.0,
+      "reference": "Prescribed mathematical spring k=100000 N/mm; preload=1000 N; axial allowable=2000 N (already includes the chosen safety allowance). No torque inference."
+    }
+  ]
+}

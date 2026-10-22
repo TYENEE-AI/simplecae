@@ -25,6 +25,25 @@ def main(argv=None):
     from . import __version__
     p.add_argument('--version',action='version',version=__version__)
     sub = p.add_subparsers(dest="command", required=True)
+    mjcf=sub.add_parser('import-mjcf',help='Translate a restricted explicit MJCF tree to URDF; preserve frame and inertial evidence')
+    mjcf.add_argument('file',type=Path)
+    mjcf.add_argument('--inertials',type=Path)
+    mjcf.add_argument('--reference',type=Path,help='Source-bound native CAD handoff.json for joint frame verification')
+    mjcf.add_argument('--out',type=Path,default=Path('out/cae/mjcf'))
+    robot_models=sub.add_parser('robot-link-models',help='Associate URDF link names with per-link STEP files')
+    robot_models.add_argument('file',type=Path)
+    robot_models.add_argument('--step-dir',type=Path,required=True)
+    robot_models.add_argument('--link',action='append')
+    robot_models.add_argument('--massless-link',action='append',default=[])
+    robot_models.add_argument('--out',type=Path,default=Path('out/cae/robot-links'))
+    refs=sub.add_parser('refs',help='Resolve canonical CAD Viewer faces through isolated native signatures')
+    refs_ops=refs.add_subparsers(dest='refs_operation',required=True)
+    refs_resolve=refs_ops.add_parser('resolve')
+    refs_resolve.add_argument('reference')
+    refs_resolve.add_argument('--expected-sha256',required=True,help='STEP hash recorded when the face was selected')
+    refs_resolve.add_argument('--cad-python',help='Python executable in the separate cadgen environment')
+    refs_resolve.add_argument('--timeout',type=float,default=DEFAULT_EXECUTION_BUDGET)
+    refs_resolve.add_argument('--out',required=True,type=Path)
     policy=sub.add_parser('mesh-policy',help='Show the declared physics mesh contract and legal planning example; no solve or criterion relaxation')
     policy.add_argument('case',type=Path)
     cache_ops=sub.add_parser('cache',help='Explicit cache preview, verified archive and fresh restore; originals are never purged')
@@ -38,6 +57,17 @@ def main(argv=None):
     plan.add_argument('--out', type=Path, required=True)
     task = sub.add_parser('task', help='One task file, revision-bound completion records and existing Viewer')
     task_ops = task.add_subparsers(dest='task_operation', required=True)
+    task_scaffold=task_ops.add_parser('scaffold',help='Prefill a hook/bracket/plate task; unknown physical inputs remain pending')
+    task_scaffold.add_argument('--preset',choices=['hook','bracket','plate'],required=True)
+    task_scaffold.add_argument('--material',required=True,help='reference-steel mathematical fixture or sourced material JSON file')
+    task_scaffold.add_argument('--model',type=Path)
+    task_scaffold.add_argument('--interfaces',type=Path)
+    task_scaffold.add_argument('--force-n',nargs=3,type=float)
+    task_scaffold.add_argument('--max-displacement-mm',type=float)
+    task_scaffold.add_argument('--safety-factor',type=float,default=2.)
+    task_scaffold.add_argument('--mesh-sizes',nargs='+',type=float)
+    task_scaffold.add_argument('--task-id')
+    task_scaffold.add_argument('--out',type=Path,default=Path('out/cae/scaffold'))
     task_start = task_ops.add_parser('start', help='Generate plan/cases/context from one task file; no solve unless --run is selected')
     task_start.add_argument('file', type=Path)
     task_start.add_argument('--out', type=Path, required=True)
@@ -75,6 +105,7 @@ def main(argv=None):
         entry.add_argument('--brief',action='store_true',help='Small Agent summary with actions; full history and fields remain on disk')
     doctor = sub.add_parser("doctor", help="Check runtime and CalculiX availability")
     doctor.add_argument("--ccx")
+    doctor.add_argument('--compare-root',type=Path,action='append',default=[],help='Also identify another SimpleCAE root; never switch runtimes implicitly')
     tune = sub.add_parser("calibrate", help="Measure serial/parallel same-deck field parity; never grants engineering acceptance")
     tune.add_argument("input", type=Path, help="Existing self-contained static job.inp")
     tune.add_argument("--out", type=Path, required=True)
@@ -202,7 +233,13 @@ def main(argv=None):
     try:
         if hasattr(args, "timeout") and args.timeout!='auto' and (not math.isfinite(args.timeout) or args.timeout <= 0 or args.timeout > MAX_WAIT_SECONDS):
             raise ValueError("timeout must be finite, positive and within the platform wait range")
-        if args.command == 'cache':
+        if args.command == 'import-mjcf':
+            from .mjcf import convert
+            output=convert(args.file,args.out,inertials=args.inertials,reference=args.reference)
+        elif args.command == 'robot-link-models':
+            from .robot_handoff import link_steps
+            output=link_steps(args.file,args.step_dir,args.out,links=args.link,massless_links=args.massless_link)
+        elif args.command == 'cache':
             from .cache_lifecycle import plan_cache,archive_cache,restore_cache
             if args.cache_operation=='plan':
                 if args.out.exists() or args.out.resolve().is_relative_to(args.root.resolve()):raise ValueError('Cache plan must be fresh and outside the cache')
@@ -215,9 +252,17 @@ def main(argv=None):
             from .schemas import check_contract
             from .mesh_policy import mesh_policy
             output=mesh_policy(check_contract(json.loads(args.case.read_text(encoding='utf-8-sig'))))
+        elif args.command == 'refs':
+            from .refs import resolve
+            output=resolve(args.reference,args.out,expected_sha256=args.expected_sha256,cad_python=args.cad_python,timeout=args.timeout)
         elif args.command == 'task':
             from .task import start_task, run_task_check, record_task_check, task_status, brief_task_status
-            if args.task_operation == 'start':
+            if args.task_operation == 'scaffold':
+                from .scaffold import scaffold
+                output=scaffold(args.out,preset=args.preset,material=args.material,model=args.model,
+                    interfaces=args.interfaces,force_n=args.force_n,max_displacement_mm=args.max_displacement_mm,
+                    safety_factor=args.safety_factor,task_id=args.task_id,mesh_sizes=args.mesh_sizes)
+            elif args.task_operation == 'start':
                 if not args.run and any(v is not None for v in (args.total_budget_seconds,args.budget_reason,args.reuse_levels)):
                     raise ValueError('Execution allowance/reuse options on task start require --run; otherwise supply them to task run')
                 output = start_task(args.file, args.out, viewer_session=args.viewer_session, continue_from=args.continue_from)
@@ -236,7 +281,7 @@ def main(argv=None):
                     limitations=args.limitation,summary=args.summary,revision_sha256=args.revision)
             else:
                 output = task_status(args.session)
-            if args.brief:
+            if getattr(args,'brief',False):
                 output=brief_task_status(output)
         elif args.command == 'plan':
             from .use_plan import prepare_plan
@@ -244,12 +289,16 @@ def main(argv=None):
             output = {k: r[k] for k in ('recommendation', 'next_checks', 'fem_checks', 'calculation_checks', 'worker_started', 'whole_product_pass_available')}
             output['report'] = str(args.out.resolve() / 'plan-review.html')
         elif args.command == "doctor":
+            from .environment import environment_warnings,runtime_copies
             from .execution import hardware_snapshot
             from .defaults import execution_defaults
             from .paths import resource_root
             root=resource_root()
             exe = find_ccx(args.ccx)
+            copies=runtime_copies(root,args.compare_root)
             output = {"status": "ready", "python": sys.executable, "ccx": str(exe), "ccx_sha256": sha256(exe),
+                      "warnings":environment_warnings()+(['Multiple SimpleCAE copies detected; use the reported Python, entrypoint and active resource root consistently. Nothing was synchronized or switched.'] if copies['multiple_copies_detected'] else []),
+                      "runtime_copies":copies,
                       "hardware":hardware_snapshot(),"defaults":execution_defaults(),
                       "runtime_identity":{"package_path":str(Path(__file__).resolve().parent),
                           "resource_root":str(root),"skill_sha256":sha256(root/'SKILL.md') if (root/'SKILL.md').is_file() else None,
@@ -450,6 +499,10 @@ def main(argv=None):
         if args.command in ('quickstart','analyze-gripper'):
             from .retention import retain_output
             output['storage'] = {k:v for k,v in retain_output(args.out,args.storage).items() if k in ('mode','saved_bytes','errors')}
+        if getattr(args,'out',None):
+            from .output_policy import output_warning
+            warning=output_warning(args.out)
+            if warning:output.setdefault('warnings',[]).append(warning)
         print(json.dumps(output, ensure_ascii=False, indent=2, allow_nan=False))
         if args.command=='design-check' and output.get('execution') in ('budget_exhausted','needs_explicit_model'):
             return 3

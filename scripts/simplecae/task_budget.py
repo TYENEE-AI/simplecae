@@ -39,15 +39,17 @@ def read_budget(session, state):
 
 @contextmanager
 def attempt(session, state, check_id, requested, total=None, reason=None):
+    from .process_lock import mutation_lock
+    with mutation_lock(path_for(session,state).with_suffix('.lock'),session):
+        with _attempt(session,state,check_id,requested,total,reason) as allowance:
+            yield allowance
+
+
+@contextmanager
+def _attempt(session, state, check_id, requested, total=None, reason=None):
     requested = positive(requested, 'budget_seconds')
     if total is not None: positive(total, 'total_budget_seconds')
     path = path_for(session, state)
-    lock = path.with_suffix('.lock')
-    try:
-        stream = lock.open('x', encoding='utf-8')
-    except FileExistsError:
-        raise ValueError('Execution budget busy/interrupted. Confirm the owned worker stopped before removing ' + str(lock)) from None
-    stream.close()
     try:
         value = read_budget(session, state)
         if not value['configured']:
@@ -85,6 +87,11 @@ def attempt(session, state, check_id, requested, total=None, reason=None):
             value['limit_seconds'] = total
         # read_budget adds presentation-only fields; persist just the ledger.
         value = {k: value[k] for k in ('schema_version', 'task_id', 'limit_seconds', 'attempts', 'changes')}
+        for interrupted in value['attempts']:
+            if interrupted.get('state')=='started':
+                interrupted.update(state='interrupted_reserved',recovered_at_utc=now())
+                # A hard-killed supervisor cannot settle elapsed time reliably.
+                # Retain the complete pre-reserved charge; never reset budget.
         spent = sum(a['charged_seconds'] for a in value['attempts'])
         remaining = value['limit_seconds'] - spent
         if remaining <= 0:
@@ -111,4 +118,4 @@ def attempt(session, state, check_id, requested, total=None, reason=None):
             record.update(charged_seconds=time.monotonic()-started, finished_at_utc=now())
             atomic_json(path, value)
     finally:
-        lock.unlink()
+        pass

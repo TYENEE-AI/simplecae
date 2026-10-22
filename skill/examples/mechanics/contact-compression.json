@@ -1,0 +1,152 @@
+{
+  "schema_version": "assembly-1.0",
+  "bodies": [
+    {
+      "name": "left",
+      "model": {
+        "path": "../assemblies/half-bar.step"
+      },
+      "material": {
+        "name": "prescribed_reference",
+        "source": "Mathematical steel-like reference, not certified component data",
+        "youngs_modulus_mpa": 200000.0,
+        "poisson_ratio": 0.0,
+        "yield_strength_mpa": 200.0,
+        "failure_criterion": "von_mises_yield",
+        "calibration": {
+          "kind": "mathematical_reference",
+          "reference": "Prescribed elastic/yield constants",
+          "applicability": "Numerical verification only; no physical material qualification"
+        }
+      }
+    },
+    {
+      "name": "right",
+      "model": {
+        "path": "../assemblies/half-bar.step"
+      },
+      "material": {
+        "name": "prescribed_reference",
+        "source": "Mathematical steel-like reference, not certified component data",
+        "youngs_modulus_mpa": 200000.0,
+        "poisson_ratio": 0.0,
+        "yield_strength_mpa": 200.0,
+        "failure_criterion": "von_mises_yield",
+        "calibration": {
+          "kind": "mathematical_reference",
+          "reference": "Prescribed elastic/yield constants",
+          "applicability": "Numerical verification only; no physical material qualification"
+        }
+      },
+      "placement": {
+        "translation_mm": [
+          50,
+          0,
+          0
+        ],
+        "rpy_rad": [
+          0,
+          0,
+          0
+        ]
+      },
+      "mesh_size_factor": 0.8
+    }
+  ],
+  "supports": [
+    {
+      "name": "clamp",
+      "body": "left",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0
+      }
+    },
+    {
+      "name": "guide",
+      "body": "right",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0
+      },
+      "dofs": [
+        2,
+        3
+      ]
+    }
+  ],
+  "loads": [
+    {
+      "name": "end",
+      "body": "right",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 50
+      },
+      "total_force_n": [
+        -1000.0,
+        0,
+        0
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "name": "joint",
+      "type": "frictionless_contact",
+      "master": {
+        "body": "left",
+        "selector": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 50
+        }
+      },
+      "slave": {
+        "body": "right",
+        "selector": {
+          "type": "plane",
+          "axis": "x",
+          "position_mm": 0
+        }
+      },
+      "normal": [
+        1,
+        0,
+        0
+      ],
+      "normal_stiffness_n_mm3": 100000.0,
+      "calibration": {
+        "reference": "Prescribed numerical penalty law p=100000*penetration MPa",
+        "applicability": "Mathematical reference only; no hardware calibration"
+      }
+    }
+  ],
+  "criteria": {
+    "strength_safety_factor": 2.0,
+    "max_displacement_mm": 0.1
+  },
+  "mesh": {
+    "sizes_mm": [
+      5,
+      4,
+      3
+    ]
+  },
+  "conditions": {
+    "material_verified": true,
+    "dimensions_verified": true,
+    "supports_represent_actual_mounting": true,
+    "load_pattern_verified": true,
+    "self_weight_negligible": true,
+    "connection_parameters_verified": true
+  },
+  "provenance": {
+    "task_id": "assembly-reference",
+    "revision": "base"
+  },
+  "notes": "Mathematical reference only. Contact force preload is not bolt tightening or locked bolt pretension."
+}

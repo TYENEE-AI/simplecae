@@ -13,7 +13,8 @@ from simplecae.workbench import create_session, add_result, snapshot, export_ses
 
 def model(path, width):
     import gmsh
-    gmsh.initialize()
+    from simplecae import gmsh_runtime
+    gmsh_runtime.initialize()
     try:
         gmsh.option.setNumber("General.Terminal", 0)
         gmsh.model.add("conduction-reference")
@@ -21,7 +22,7 @@ def model(path, width):
         gmsh.model.occ.synchronize()
         gmsh.write(str(path))
     finally:
-        gmsh.finalize()
+        gmsh_runtime.finalize()
 
 
 def case(step, width, revision):

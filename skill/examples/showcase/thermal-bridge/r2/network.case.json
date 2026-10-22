@@ -1,0 +1,59 @@
+{
+  "schema_version": "thermal-network-1.0",
+  "mode": "steady",
+  "nodes": [
+    {
+      "id": "cold",
+      "target": "mount reservoir",
+      "basis": "Ideal fixed20C"
+    },
+    {
+      "id": "hot",
+      "target": "heater equivalent node",
+      "basis": "One end temperature approximated by uniform1D bridge resistance"
+    }
+  ],
+  "links": [
+    {
+      "id": "bridge",
+      "type": "resistance",
+      "a": "cold",
+      "b": "hot",
+      "resistance_k_w": 2.9940119760479043,
+      "target": "bridge",
+      "basis": "L/(kA) using exact CAD dimensions; contacts omitted"
+    }
+  ],
+  "fixed_temperature_c": {
+    "cold": 20.0
+  },
+  "heat_w": {
+    "hot": 5.0
+  },
+  "criteria": [
+    {
+      "id": "temperature",
+      "node": "hot",
+      "max_temperature_c": 40.0
+    }
+  ],
+  "property_temperature_range_c": [
+    0.0,
+    120.0
+  ],
+  "assumptions": [
+    "Ideal sink, no interface resistance"
+  ],
+  "not_assessed": [
+    "Spatial gradients and real contact"
+  ],
+  "conditions": {
+    "properties_verified": false,
+    "boundaries_verified": false,
+    "lumping_verified": false
+  },
+  "provenance": {
+    "task_id": "s03_heat_bridge",
+    "revision": "r2"
+  }
+}

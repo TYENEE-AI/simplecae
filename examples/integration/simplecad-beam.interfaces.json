@@ -1,33 +1,54 @@
 {
-  "schema_version": "1.0",
-  "generator": "simplecadapi",
-  "generator_version": "2.2.1",
-  "model_id": "simplecae.reference.link",
-  "revision": "1.0.0",
-  "parameters": {
-    "length_mm": 100,
-    "width_mm": 10,
-    "height_mm": 10
+  "schema": "simplecae.interface_manifold/2",
+  "frame": "part_local",
+  "part": {
+    "solid_id": 1
   },
-  "model_path": "simplecad-beam.step",
-  "model_sha256": "f1bbdcd86b6884eba56246e87bc5d654b1ce837a72b838674f136f53e63e894d",
-  "package_path": "simplecad-beam.scadpkg",
-  "package_sha256": "bd017247203108f2d97e579d8bd3ed5fedb1b2a1c3c7c91252f8f5c11b86b82e",
+  "placement": {
+    "source": "native_occurrence",
+    "matrix_4x4": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "provenance": {
+    "generator": "simplecadapi",
+    "generator_version": "2.2.6.post2",
+    "definition_id": "simplecae.reference.link",
+    "revision": "1.0.0",
+    "content_hash": "895d10cbe95f8745c2f70c57d74699da3073031024bed4cf7bc69c406cfb85d4",
+    "package_id": "simplecae.reference.link",
+    "package_version": "3.0",
+    "package_sha256": "66fe18b8cafd177ad22ec29adca73dd1df207b8c615b3129951672c7d9dc65f2"
+  },
   "regions": {
     "mount": {
-      "native_selector": {
-        "target_kind": "face",
-        "order_desc": false,
-        "cardinality": {},
-        "predicate": {
-          "kind": "tag",
-          "data": {
-            "pattern": "cae.mount",
-            "scope": "effective"
-          },
-          "children": []
-        }
-      },
+      "face_count": 1,
+      "surface_types": [
+        "Plane"
+      ],
       "faces": [
         {
           "centroid_mm": [
@@ -35,11 +56,16 @@
             2.2204460492503135e-17,
             -6.93889390390723e-18
           ],
-          "area_mm2": 99.99999999999999
+          "area_mm2": 99.99999999999999,
+          "surface_type": "Plane",
+          "native_face_id": "face_0",
+          "normal_hint": [
+            -1.0,
+            -0.0,
+            0.0
+          ]
         }
-      ]
-    },
-    "payload": {
+      ],
       "native_selector": {
         "target_kind": "face",
         "order_desc": false,
@@ -47,12 +73,18 @@
         "predicate": {
           "kind": "tag",
           "data": {
-            "pattern": "cae.payload",
+            "pattern": "interface.mount",
             "scope": "effective"
           },
           "children": []
         }
-      },
+      }
+    },
+    "payload": {
+      "face_count": 1,
+      "surface_types": [
+        "Plane"
+      ],
       "faces": [
         {
           "centroid_mm": [
@@ -60,23 +92,29 @@
             2.2204460492503135e-17,
             -6.93889390390723e-18
           ],
-          "area_mm2": 99.99999999999999
+          "area_mm2": 99.99999999999999,
+          "surface_type": "Plane",
+          "native_face_id": "face_1",
+          "normal_hint": [
+            1.0,
+            0.0,
+            -0.0
+          ]
         }
-      ]
+      ],
+      "native_selector": {
+        "target_kind": "face",
+        "order_desc": false,
+        "cardinality": {},
+        "predicate": {
+          "kind": "tag",
+          "data": {
+            "pattern": "interface.payload",
+            "scope": "effective"
+          },
+          "children": []
+        }
+      }
     }
-  },
-  "export_report": {
-    "output_path": "simplecad-beam.step",
-    "schema": "AP242DIS",
-    "definition_ids": [
-      "simplecae.reference.link"
-    ],
-    "occurrence_count": 0,
-    "material_ids": [],
-    "metadata_item_count": 1,
-    "limitations": [
-      "Connector, constraint, grounding, revision, content-hash, and placement semantics are encoded as named AP242 descriptive property items containing deterministically sorted JSON.",
-      "The evaluated BREP and product structure are transferred through STEPCAF; canonical feature history is not reconstructed as AP242 features."
-    ]
   }
 }

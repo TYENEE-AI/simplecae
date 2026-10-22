@@ -63,14 +63,27 @@ def vector(x, name):
     return [number(v, name) for v in x]
 
 
+SELECTOR_TYPES = ('plane', 'face_ids', 'interface', 'by_normal')
+
+
 def selector(s):
-    keys(s, ["type", "axis", "position_mm", "tolerance_mm", "ids", "geometry_sha256","name"], ["type"], "selector")
+    keys(s, ["type", "axis", "position_mm", "tolerance_mm", "ids", "geometry_sha256","name","normal","offset_mm","tol_mm","dir","max_angle_deg"], ["type"], "selector")
     if s["type"] == "plane":
-        keys(s, ["type", "axis", "position_mm", "tolerance_mm"], ["axis", "position_mm"], "plane selector")
-        if s["axis"] not in ("x", "y", "z"):
-            raise ValueError("selector axis must be x/y/z")
-        number(s["position_mm"], "position_mm")
-        number(s.get("tolerance_mm", 1e-4), "tolerance_mm", True)
+        if 'normal' in s:
+            keys(s,['type','normal','offset_mm','tol_mm'],['normal','offset_mm'],'oriented plane selector')
+            if not any(vector(s['normal'],'plane.normal')):raise ValueError('plane.normal must be nonzero')
+            number(s['offset_mm'],'offset_mm')
+            number(s.get('tol_mm',1e-4),'tol_mm',True)
+        else:
+            keys(s, ["type", "axis", "position_mm", "tolerance_mm"], ["axis", "position_mm"], "plane selector")
+            if s["axis"] not in ("x", "y", "z"):
+                raise ValueError("selector axis must be x/y/z")
+            number(s["position_mm"], "position_mm")
+            number(s.get("tolerance_mm", 1e-4), "tolerance_mm", True)
+    elif s['type']=='by_normal':
+        keys(s,['type','dir','max_angle_deg'],['dir','max_angle_deg'],'by_normal selector')
+        if not any(vector(s['dir'],'by_normal.dir')):raise ValueError('by_normal.dir must be nonzero')
+        if not 0<=number(s['max_angle_deg'],'max_angle_deg')<=180:raise ValueError('max_angle_deg must be in [0,180]')
     elif s["type"] == "face_ids":
         keys(s, ["type", "ids", "geometry_sha256"], ["ids", "geometry_sha256"], "face_ids selector")
         ids = s["ids"]
@@ -83,7 +96,7 @@ def selector(s):
         if not isinstance(s['name'],str) or not s['name']:
             raise ValueError('interface selector name must be nonempty')
     else:
-        raise ValueError("selector type must be plane or face_ids; partial face patches require upstream partitioning")
+        raise ValueError('selector type must be '+', '.join(SELECTOR_TYPES)+'; partial face patches require upstream partitioning')
 
 
 def validate_case(c,*,allow_unloaded=False):
@@ -134,7 +147,7 @@ def validate_case(c,*,allow_unloaded=False):
             allowed = ["name", "selector"] + (["total_force_n"] if field == "loads" else ["dofs"])
             if reference:allowed=['name','point_mm','dofs','geometry_sha256']
             if field == "loads" and version == "2.0":
-                allowed += ["total_moment_n_mm", "application_point_mm", "scalable"]
+                allowed += ["total_moment_n_mm", "application_point_mm", "scalable", "distribution", "allow_opposite_traction"]
             keys(item, allowed, ["name", "selector", "total_force_n"] if field == "loads" else ['name','point_mm','dofs','geometry_sha256'] if reference else ["name", "selector"], field)
             if not isinstance(item["name"], str) or not item["name"].strip():
                 raise ValueError("support/load names must be nonempty strings")
@@ -144,6 +157,8 @@ def validate_case(c,*,allow_unloaded=False):
                 from .constraints import support_dofs
                 support_dofs(item)
             if field == "loads":
+                from .loads import validate_distribution
+                validate_distribution(item)
                 force = vector(item["total_force_n"], "total_force_n")
                 moment = vector(item.get("total_moment_n_mm", [0,0,0]), "total_moment_n_mm")
                 if not any(force) and not any(moment):
@@ -237,6 +252,8 @@ def load_case(path: Path):
     c = validate_case(json.loads(path.read_text(encoding="utf-8-sig")))
     model = Path(c["model"]["path"])
     model = (path.parent / model).resolve() if not model.is_absolute() else model.resolve()
+    from .input_guidance import require_fem_format
+    require_fem_format(model)
     formats=(".step", ".stp", ".glb", ".stl", ".obj") if c['schema_version']=='2.0' else (".step", ".stp")
     if model.suffix.lower() not in formats or not model.is_file():
         raise ValueError("model.path must reference an existing supported solid/mesh file")
@@ -255,4 +272,13 @@ def load_case(path: Path):
         interface=(path.parent/interface).resolve() if not interface.is_absolute() else interface.resolve()
         if not interface.is_file(): raise ValueError('interface_manifest does not exist')
         c['model']['interface_manifest']=str(interface)
+        manifest=json.loads(interface.read_text(encoding='utf-8-sig'))
+        if manifest.get('schema')=='simplecae.interface_manifold/2':
+            from .bridge import manifest_identity
+            if manifest_identity(manifest)['model_sha256']!=sha256(model):
+                raise ValueError('interface manifest belongs to a different model hash')
+            native=manifest['provenance'];provenance=c.setdefault('provenance',{})
+            for key in ('generator','generator_version','revision','parameters','source_file'):
+                if key in native:provenance.setdefault(key,native[key])
+            provenance.setdefault('model_id',native['definition_id'])
     return c

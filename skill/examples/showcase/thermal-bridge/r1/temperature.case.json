@@ -1,0 +1,88 @@
+{
+  "schema_version": "thermal-solid-1.0",
+  "mode": "steady",
+  "model": {
+    "path": "bridge.step",
+    "expected_bbox_mm": [
+      [
+        0.0,
+        -10.0,
+        0.0
+      ],
+      [
+        40.0,
+        10.0,
+        2.0
+      ]
+    ],
+    "units": "mm"
+  },
+  "material": {
+    "name": "Assumed aluminum",
+    "basis": "Constant k167W/mK within0–120C, simulated screening assumption",
+    "conductivity_w_mk": 167.0,
+    "temperature_range_c": [
+      0.0,
+      120.0
+    ]
+  },
+  "boundaries": [
+    {
+      "name": "cold",
+      "target": "bridge cold end",
+      "basis": "Ideal20C mount; actual contact and cooling unverified",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0.0
+      },
+      "type": "temperature",
+      "temperature_c": 20.0
+    },
+    {
+      "name": "heater",
+      "target": "bridge hot end",
+      "basis": "Fixed5W at end",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 40.0
+      },
+      "type": "heat_power",
+      "total_heat_w": 5.0
+    }
+  ],
+  "mesh": {
+    "sizes_mm": [
+      6.0,
+      4.5,
+      3.3
+    ],
+    "max_elements": 15000,
+    "preserve_boundary_nodes": true
+  },
+  "criteria": [
+    {
+      "id": "temperature",
+      "target": "bridge",
+      "region": {
+        "type": "body"
+      },
+      "max_temperature_c": 40.0
+    }
+  ],
+  "assumptions": [
+    "Homogeneous constant k, all other faces insulated, ideal contact"
+  ],
+  "not_assessed": [
+    "Real interfaces and cooling, temperature-dependent strength, touch and creep"
+  ],
+  "conditions": {
+    "properties_verified": false,
+    "boundaries_verified": false
+  },
+  "provenance": {
+    "task_id": "s03_heat_bridge",
+    "revision": "r1"
+  }
+}

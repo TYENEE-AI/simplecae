@@ -1,0 +1,12 @@
+{
+  "schema_version": "simplecae-use-plan-1.0",
+  "task_id": "wall-fixture-load-use",
+  "request": "FDM打印墙面挂件，需要挂5kg物品。先评估本体，并保留实际安装的待核实条件。",
+  "scenarios": [{"id": "hanging", "use": "物品持续悬挂，支承由墙面安装连接提供", "success": "声明载荷下不过度下垂、不破坏，安装路径也有充分证据"}],
+  "checks": [
+    {"id": "body-static", "scenario": "hanging", "question": "挂件本体在声明安装理想化下是否满足强度和位移要求？", "user_impact": "根部损伤或下垂会导致物品掉落或难以使用", "method": "fem", "decision": "now", "targets": ["挂件承载臂及根部", "安装反力传入界面"], "reason": "明确的承重任务值得做针对性静力筛查，但单件通过不能代替安装通过", "required_for_claim": true, "acceptance": "按case中的明确强度及位移判据评估，保留打印材料与安装假设", "assumptions": ["材料参数待标定，仅作数学筛查", "case须明确安装反力理想化，不能将整背板随意全固定"], "not_assessed": ["墙体与锚固破坏", "长期蠕变与冲击"], "load_path": "物品到挂件承载区，再到本体根部、安装界面、紧固件和墙体", "load_basis": "5kg对应约49.05N静态重力；实际受力区域和偏心由模型及使用方式确定，附加工况需有依据", "support_basis": "由实际安装接口选取反力传入面与自由度；未标定的连接刚度保持假设", "result_criteria": ["strength", "stiffness"]},
+    {"id": "installation", "scenario": "hanging", "question": "紧固件和实际墙体能否完成载荷传递？", "user_impact": "本体不坏也可能因安装失效掉落", "method": "information", "decision": "needs_information", "targets": ["螺钉或锚栓", "墙体和安装接触"], "reason": "需要型号、墙体、施工和连接依据；本体结果不能覆盖这些未知量", "required_for_claim": true, "acceptance": "有适用于实际安装状态的连接／锚固证据，必要时做连接分析和安装试验", "assumptions": [], "not_assessed": ["安装系统承载额定值"]}
+  ],
+  "unknowns": ["打印材料实际强度及持续载荷适用性", "紧固件与墙体依据"],
+  "iteration_constraints": ["保持5kg需求和原判据", "保留物品接触与安装接口", "不能以本体通过授予墙面安装承重"]
+}

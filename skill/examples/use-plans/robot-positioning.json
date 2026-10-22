@@ -1,0 +1,12 @@
+{
+  "schema_version": "simplecae-use-plan-1.0",
+  "task_id": "robot-position-error",
+  "request": "机器人搬运时末端位置要稳定，希望先找到最影响定位体验的柔度来源。数值目标与姿态须由实际任务确认。",
+  "scenarios": [{"id": "place", "use": "在工作姿态抓住物品并保持位置", "success": "末端相对任务基准的偏移满足允许值，驱动保持能力足够"}],
+  "checks": [
+    {"id": "compliance-path", "scenario": "place", "question": "载荷经哪些关节、连杆和安装位置传递，哪些柔度未知？", "user_impact": "只看某个连杆的应力可能漏掉影响精度最大的关节或安装变形", "method": "information", "decision": "now", "targets": ["末端至基座的受力链", "关键关节保持状态", "基座安装"], "reason": "先确认姿态、负载、误差基准、关节刚度及驱动限值，避免按URDF零件清单逐一网格化", "required_for_claim": true, "acceptance": "建立有来源的负载／反力和柔度覆盖，明确影响结论的未知量", "assumptions": [], "not_assessed": ["整机定位精度通过"]},
+    {"id": "target-compliance", "scenario": "place", "question": "相关连杆和关节柔度传递后的末端偏移是多少？", "user_impact": "偏移过大时难以准确放置，零件强度通过也不能解决定位问题", "method": "fem", "decision": "needs_information", "targets": ["受力路径中的控制连杆", "等效关节柔度", "末端任务测点"], "reason": "先取得影响决定的输入，再使用现有指定姿态／一阶柔度和必要的组件FEM；不默认分析装饰件", "required_for_claim": true, "acceptance": "使用任务测点及允许误差，保留所有关键姿态、关节／安装适用性和驱动保持约束", "assumptions": ["支持范围内的小变形开链静态模型"], "not_assessed": ["控制误差", "动态振动", "实物定位重复性"]}
+  ],
+  "unknowns": ["允许误差、基准、姿态和负载", "关节刚度与保持状态", "安装与驱动实际参数"],
+  "iteration_constraints": ["保持可达工作空间与负载目标", "保持真实驱动额定值", "区分连杆刚度、关节柔度和控制精度"]
+}

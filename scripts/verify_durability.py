@@ -26,8 +26,9 @@ def source(root, name, value):
 
 def section(root, thickness):
     import gmsh
+    from simplecae import gmsh_runtime
     p = root/"section.step"
-    gmsh.initialize()
+    gmsh_runtime.initialize()
     try:
         gmsh.option.setNumber("General.Terminal", 0)
         gmsh.model.add("uniform-axial-reference")
@@ -36,7 +37,7 @@ def section(root, thickness):
         volume = gmsh.model.occ.getMass(3, tag)
         gmsh.write(str(p))
     finally:
-        gmsh.finalize()
+        gmsh_runtime.finalize()
     # This reference is an exact rectangular section, so F/A uses its declared
     # dimensions. OCC mass integration independently checks the generated solid.
     # Do not perturb a curve endpoint by numerical volume-integration roundoff.

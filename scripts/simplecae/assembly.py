@@ -150,7 +150,7 @@ def load_assembly_case(path):
     for field,names_out in [('supports',support_names),('loads',load_names)]:
         if not isinstance(c[field],list) or (field=='supports' and not c[field]):raise ValueError('assembly supports required; loads must be a list')
         for item in c[field]:
-            allowed=['name','body','selector']+(['total_force_n','total_moment_n_mm','application_point_mm','scalable'] if field=='loads' else ['dofs','service_displacement_mm'])
+            allowed=['name','body','selector']+(['total_force_n','total_moment_n_mm','application_point_mm','scalable','distribution','allow_opposite_traction'] if field=='loads' else ['dofs','service_displacement_mm'])
             keys(item,allowed,['name','body','selector']+(['total_force_n'] if field=='loads' else []),field)
             if not isinstance(item['name'],str) or not item['name'] or item['body'] not in body_names:raise ValueError('support/load references an invalid name/body')
             names_out.append(item['name']);selector(item['selector'])
@@ -161,6 +161,8 @@ def load_assembly_case(path):
                     values=vector(item['service_displacement_mm'],'service fixture displacement')
                     if any(v and i+1 not in support_dofs(item) for i,v in enumerate(values)):raise ValueError('fixture displacement requires its DOF to be constrained')
             if field=='loads':
+                from .loads import validate_distribution
+                validate_distribution(item)
                 f=vector(item['total_force_n'],'force');m=vector(item.get('total_moment_n_mm',[0,0,0]),'moment')
                 if not any(f) and not any(m):raise ValueError('load wrench must be nonzero')
                 if 'application_point_mm' in item:vector(item['application_point_mm'],'application point')
@@ -479,7 +481,11 @@ def make_assembly_mesh(c,h,out):
             report=copy.deepcopy(load);report['body']=body['name'];report['face_ids']=[face_map[f] for f in load['face_ids']]
             report['centroid_mm']=(rotation@load['centroid_mm']+translation).tolist();report['total_force_n']=(rotation@load['total_force_n']).tolist()
             report['traction_mpa']=(rotation@load['traction_mpa']).tolist()
-            report['total_moment_n_mm_about_patch_centroid']=(rotation@load['total_moment_n_mm_about_patch_centroid']).tolist();loads.append(report)
+            report['total_moment_n_mm_about_patch_centroid']=(rotation@load['total_moment_n_mm_about_patch_centroid']).tolist()
+            if report.get('distribution_diagnostic'):
+                diagnostic=report['distribution_diagnostic']
+                diagnostic.update(coordinate_frame='body_local_mm',body=body['name'],body_placement=placement)
+            loads.append(report)
         v=meta['mesh_volume_mm3'];volume+=v;force_scale+=meta['load_force_scale_n']
         density=body['material'].get('density_kg_m3')
         if density is None:mass_known=False
@@ -519,6 +525,10 @@ def make_assembly_mesh(c,h,out):
                         surface_tri6=np.array(surface_tri),surface_face_ids=np.array(surface_faces),
                         element_min_sicn=np.array([element_sicn[e] for e in tets]),element_min_det_jac=np.array([element_det[e] for e in tets]))
     write_json(out/'mesh.json',meta)
+    write_json(out/'load_distribution.json',{'coordinate_frame':'assembly_world_mm',
+        'nodes':[{'id':int(n),'xyz_mm':coords[n].tolist(),'force_n':f.tolist()} for n,f in forces.items()],
+        'loads':[load.get('distribution_diagnostic',{}) for load in loads],
+        'body_evidence':[{'body':b['name'],'path':str(Path(b['directory'])/'load_distribution.json')} for b in body_reports]})
     return coords,tets,sorted(fixed),forces,meta
 
 

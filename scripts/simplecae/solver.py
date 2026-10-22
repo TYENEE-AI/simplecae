@@ -41,11 +41,12 @@ def validate_real_fields(path):
 
 
 def find_ccx(explicit=None):
+    from .environment import solver_install_hint
     request = explicit or os.environ.get("SIMPLECAE_CCX")
     if request:
         p = Path(shutil.which(str(request)) or str(request)).expanduser().resolve()
         if not p.is_file():
-            raise FileNotFoundError(f"CalculiX executable not found: {request}")
+            raise FileNotFoundError(f"CalculiX executable not found: {request}; {solver_install_hint()}")
         return p
     config=ROOT/'.tools/runtime.json'
     if config.is_file():
@@ -58,15 +59,15 @@ def find_ccx(explicit=None):
             if not isinstance(configured,str):
                 raise ValueError('configured CalculiX executable must be a path or executable name')
             p=Path(shutil.which(configured) or configured).expanduser().resolve()
-            if not p.is_file():raise FileNotFoundError('configured CalculiX executable is missing; rerun bootstrap or supply --ccx')
+            if not p.is_file():raise FileNotFoundError('configured CalculiX executable is missing; '+solver_install_hint())
             return p
     on_path = shutil.which("ccx")
     if on_path:
         return Path(on_path).resolve()
-    local = list((ROOT / ".tools" / "calculix-2.23").glob("**/ccx.exe"))
+    local = list((ROOT / ".tools" / "calculix-2.23").glob("**/ccx.exe")) if platform.system()=='Windows' else []
     if len(local) == 1:
         return local[0].resolve()
-    raise FileNotFoundError("CalculiX not found; run scripts/bootstrap.ps1 or set SIMPLECAE_CCX / --ccx")
+    raise FileNotFoundError('CalculiX not found; '+solver_install_hint())
 
 
 def write_deck(c, mesh, path):

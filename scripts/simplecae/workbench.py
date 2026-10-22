@@ -452,13 +452,18 @@ def make_server(session, port=0):
                 self.reply(400, {'error': str(exc)})
 
         def do_POST(self):
-            if not self.allowed() or self.headers.get('X-SimpleCAE-Token') != cfg['feedback_token']:
-                return self.reply(403, {'error': 'Same-origin review token required'})
             try:
                 size = int(self.headers.get('Content-Length', '0'))
                 if not 0 < size <= 20000:
                     raise ValueError('Request exceeds the note budget')
-                incoming = json.loads(self.rfile.read(size))
+                # Drain a bounded request before closing an HTTP/1.0 response.
+                # Closing with unread POST bytes can reset the socket on
+                # Windows, losing even a correctly generated 403 response.
+                self.connection.settimeout(5)
+                body = self.rfile.read(size)
+                if not self.allowed() or self.headers.get('X-SimpleCAE-Token') != cfg['feedback_token']:
+                    return self.reply(403, {'error': 'Same-origin review token required'})
+                incoming = json.loads(body)
                 with lock:
                     if self.path == '/feedback':
                         return self.reply(200, save_note(session, incoming))

@@ -1,0 +1,42 @@
+{
+  "id": "s04_inspection_arm",
+  "role": "机器人集成工程师，设计桌面两连杆检测臂",
+  "need": "0.2 kg末端负载，明确保持姿态与运动状态；评估驱动力矩、安装反力及0.5 mm末端精度",
+  "parts": [
+    "基座",
+    "第一连杆",
+    "第二连杆",
+    "关节包络",
+    "工具安装板"
+  ],
+  "dimensions_mm": {
+    "link1_length": 180,
+    "link2_length": 140,
+    "link_width": 24,
+    "initial_depth": 8
+  },
+  "material": "连杆铝等效E=69000 MPa, nu=0.33, yield=240 MPa, density=2700 kg/m3；质量惯量由所建CAD计算",
+  "criteria": {
+    "payload_kg": 0.2,
+    "tip_displacement_limit_mm": 0.5,
+    "drive_continuous_limit_nm": 2.0
+  },
+  "checks": [
+    "assembly placement and URDF binding",
+    "posed rigid statics",
+    "prescribed motion loads",
+    "link FEM plus equivalent joint compliance"
+  ],
+  "permitted_edit": "首轮只允许连杆截面修改；若关节贡献主导则停止盲目加厚并明确需要关节刚度/保持状态复核",
+  "validation": [
+    "CAD-derived mass/COM/inertial frames",
+    "motion wrench and speed applicability",
+    "vector link/joint/total contributions",
+    "no local-link pass promoted to robot accuracy"
+  ],
+  "physical_pending": [
+    "输出端关节刚度、间隙和保持控制实测",
+    "驱动散热和实际连续额定",
+    "实际运动轨迹"
+  ]
+}

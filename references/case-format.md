@@ -35,3 +35,24 @@ The hash prevents using stale face IDs after STEP edits. Surface areas and centr
 Choose mesh sizes from thickness, radii and stress concentrations, not just the bounding-box diagonal. Convergence requires both of the last two refinement comparisons to meet displacement and peak stress tolerances. An adequate displacement result may coexist with an unresolved peak stress. Do not relax tolerances just to obtain a passing assessment.
 
 All output files are contained in the fresh run directory: `case.resolved.json`, `result.json`, `report.html`, and per-level `mesh.msh`, `mesh.json`, `mesh.npz`, `job.inp`, `job.dat`, `job.frd`, `job.sta`, `job.solver.log`, `fields.npz`, `results.json`. The finest level also has `fields.png` if rendering succeeds. The static fields are actual solver outputs; display deformation is amplified and labelled. Preview failure does not change numerical validity but must be disclosed.
+
+## Surface wrenches in v2 and assemblies
+
+`application_point_mm` changes the moment of a distributed surface load; it does
+not create contact at that point. Choose a real CAD contact patch first. Every
+attempt writes `load_distribution.json` with node forces and locations. The
+reverse fraction is the sum of negative projections onto the resultant direction
+divided by the sum of absolute projections. Above 5% it emits
+`opposite_sign_traction`; above 20% it refuses the solve unless that load explicitly
+sets `allow_opposite_traction: true`. Such permission stays in the diagnostic
+assumptions and comparison contract; it needs a physical justification.
+Pure couples have no resultant direction, recorded as `force_projection_defined: false`.
+
+`distribution: "bearing_only"` distributes nonnegative force parallel to the
+resultant. It cannot invent a transverse couple to fit an impossible contact
+patch. A moment residual above 1% raises `infeasible_bearing_distribution` and
+retains the attempted forces. Near-zero target moments use a patch force/length
+scale for the residual floor. This is a declared traction model, not a contact
+solver or a substitute for friction, separation or local bearing validation.
+Partition the CAD contact region and regenerate selections when infeasible.
+`distribution: "consistent"` is the default signed conservative distribution.

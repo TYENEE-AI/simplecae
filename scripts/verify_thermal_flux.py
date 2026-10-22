@@ -38,8 +38,9 @@ def reference(name, xyz):
 
 def build_case(root, name):
     import gmsh
+    from simplecae import gmsh_runtime
     step = root / (name + ".step")
-    gmsh.initialize()
+    gmsh_runtime.initialize()
     try:
         gmsh.option.setNumber("General.Terminal", 0)
         gmsh.model.add(name)
@@ -57,7 +58,7 @@ def build_case(root, name):
         gmsh.model.occ.synchronize()
         gmsh.write(str(step))
     finally:
-        gmsh.finalize()
+        gmsh_runtime.finalize()
     ends = [{"name": label, "target": label, "basis": "Ideal analytic boundary",
              "type": "temperature", "temperature_c": 20.,
              "selector": {"type": "plane", "axis": axis, "position_mm": at}}

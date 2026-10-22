@@ -180,6 +180,31 @@
               "$ref": "#/$defs/selector"
             }
           },
+          "port_load_policies": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "distribution": {
+                  "enum": [
+                    "consistent",
+                    "bearing_only"
+                  ]
+                },
+                "allow_opposite_traction": {
+                  "type": "boolean"
+                },
+                "reference": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "reference"
+              ],
+              "additionalProperties": false
+            }
+          },
           "mass_relative_tolerance": {
             "type": "number",
             "exclusiveMinimum": 0
@@ -445,14 +470,79 @@
             "tolerance_mm": {
               "type": "number",
               "exclusiveMinimum": 0
+            },
+            "normal": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "offset_mm": {
+              "type": "number"
+            },
+            "tol_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
             }
           },
           "required": [
-            "type",
-            "axis",
-            "position_mm"
+            "type"
           ],
-          "additionalProperties": false
+          "additionalProperties": false,
+          "oneOf": [
+            {
+              "required": [
+                "axis",
+                "position_mm"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "normal"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "offset_mm"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "tol_mm"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "required": [
+                "normal",
+                "offset_mm"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "axis"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "position_mm"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "tolerance_mm"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
         },
         {
           "type": "object",
@@ -495,6 +585,33 @@
           "required": [
             "type",
             "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "by_normal"
+            },
+            "dir": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "max_angle_deg": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "type",
+            "dir",
+            "max_angle_deg"
           ],
           "additionalProperties": false
         }
@@ -854,6 +971,15 @@
           "maxItems": 3
         },
         "scalable": {
+          "type": "boolean"
+        },
+        "distribution": {
+          "enum": [
+            "consistent",
+            "bearing_only"
+          ]
+        },
+        "allow_opposite_traction": {
           "type": "boolean"
         }
       },
@@ -1465,6 +1591,15 @@
           "maxItems": 3
         },
         "scalable": {
+          "type": "boolean"
+        },
+        "distribution": {
+          "enum": [
+            "consistent",
+            "bearing_only"
+          ]
+        },
+        "allow_opposite_traction": {
           "type": "boolean"
         },
         "body": {
@@ -2592,6 +2727,31 @@
                 "type": "object",
                 "additionalProperties": {
                   "$ref": "#/$defs/selector"
+                }
+              },
+              "port_load_policies": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "distribution": {
+                      "enum": [
+                        "consistent",
+                        "bearing_only"
+                      ]
+                    },
+                    "allow_opposite_traction": {
+                      "type": "boolean"
+                    },
+                    "reference": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "reference"
+                  ],
+                  "additionalProperties": false
                 }
               },
               "mass_relative_tolerance": {

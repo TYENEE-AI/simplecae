@@ -18,10 +18,12 @@ def transfer_loads(robot,c,component,kin,full,fixed):
         loads.append({'name':name+(':payload' if scalable else ':fixed'),'selector':component['ports'][name],
                       'total_force_n':f.tolist(),'total_moment_n_mm':m.tolist(),
                       'application_point_mm':p.tolist(),'scalable':scalable})
+        policy=component.get('port_load_policies',{}).get(name,{})
+        loads[-1].update({k:policy[k] for k in ('distribution','allow_opposite_traction') if k in policy})
         transfers.append({'port':name,'force_n':f.tolist(),'moment_n_mm_at_application':m.tolist(),
                           'point_mm':p.tolist(),'scalable':scalable,
                           'world_point_m':point.tolist(),'world_force_n':w[:3].tolist(),
-                          'world_moment_n_m_at_application':w[3:].tolist()})
+                          'world_moment_n_m_at_application':w[3:].tolist(), 'load_policy':policy})
     for name in robot['children'][link]:
         child=robot['joints'][name]['child'];point=kin['frames'][child][:3,3]
         if c.get('elastic_transfer') and name in component['ports']:used.add(name)

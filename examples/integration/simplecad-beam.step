@@ -1,7 +1,7 @@
 ISO-10303-21;
 HEADER;
 FILE_DESCRIPTION(('Open CASCADE Model'),'2;1');
-FILE_NAME('Open CASCADE Shape Model','2026-10-13T23:28:12',('Author'),(
+FILE_NAME('Open CASCADE Shape Model','2026-10-21T23:04:41',('Author'),(
     'Open CASCADE'),'Open CASCADE STEP processor 7.9','Open CASCADE 7.9'
   ,'Unknown');
 FILE_SCHEMA((
@@ -420,7 +420,7 @@ GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((#349)) GLOBAL_UNIT_ASSIGNED_CONTEXT
 #354 = DESCRIPTIVE_REPRESENTATION_ITEM(
   'SimpleCAD:definition:single_solid:simplecae.reference.link',
 '{"connectors": [], "content_hash": 
-"sha256:8cbb40a386012525c1ec649d0e53fdb018f5cff390e207389e7b17d965c6b187
+"sha256:a8ef9f81d4cbe622359c23cd5c7b69b02ef77b7f1909abff0307d71e03383660
 ", "definition_id": "simplecae.reference.link", "definition_kind": 
 "single_solid", "record_kind": "definition", "revision": "1.0.0"}');
 ENDSEC;

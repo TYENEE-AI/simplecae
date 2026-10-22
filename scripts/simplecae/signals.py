@@ -74,7 +74,7 @@ def robot_contract(case, robot=None):
     covered={c['link'] for c in case.get('components',[])}
     contract['rigid_link_inertials']={name:{'mass_kg':d['mass_kg'],'com_m':list(d['com_m'])}
         for name,d in sorted(robot['links'].items()) if name not in covered}
-    contract['components']=[{'link':c['link'],'ports':c['ports'],'link_from_component':c.get('link_from_component'),
+    contract['components']=[{'link':c['link'],'ports':c['ports'],'port_load_policies':c.get('port_load_policies'),'link_from_component':c.get('link_from_component'),
                             'mass_relative_tolerance':c.get('mass_relative_tolerance',.02),'com_tolerance_mm':c.get('com_tolerance_mm'),
                             'physics':structural_contract(load_case(Path(c['case_path'])))} for c in case.get('components',[])]
     return contract
@@ -92,7 +92,7 @@ def recorded_contract_matches(case,contract,robot=False):
     if any(contract.get(k)!=case.get(k) for k in keys):return False
     if contract.get('elastic_transfer')!=case.get('elastic_transfer'):return False
     if contract.get('task_id')!=case.get('provenance',{}).get('task_id'):return False
-    projected=lambda entries:[{k:e.get(k) for k in ('link','ports','link_from_component','com_tolerance_mm')} |
+    projected=lambda entries:[{k:e.get(k) for k in ('link','ports','port_load_policies','link_from_component','com_tolerance_mm')} |
                               {'mass_relative_tolerance':e.get('mass_relative_tolerance',.02)} for e in entries]
     return projected(contract.get('components',[]))==projected(case.get('components',[]))
 
@@ -279,7 +279,7 @@ def design_signal(result):
             b=assessment['buckling'].get('reference_utilization')
             usable=b is not None and math.isfinite(b) and b>=0
             if usable:utilizations['elastic_buckling']=b
-            valid=valid and assessment['buckling'].get('mesh_converged') is True and usable
+            valid=valid and assessment['buckling'].get('mesh_converged') is True and assessment['buckling'].get('reference_normalization_verified') is True and usable
         elif case.get('buckling',{}).get('enabled'):valid=False
         physical=physical_facts(case,assessment)
         limit=assessment.get('conditional_body_limit')

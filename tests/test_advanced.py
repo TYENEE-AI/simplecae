@@ -31,7 +31,7 @@ def test_fixed_loads_alone_can_fail():
 
 def test_signed_wrench_with_offset_is_conserved():
     xyz={1:np.array([-1.,-1.,2.]),2:np.array([1.,-1.,2.]),3:np.array([1.,1.,2.]),4:np.array([-1.,1.,2.])}
-    loads,center,moment=distribute_wrench(xyz,{n:1. for n in xyz},[10.,0.,-20.],[0.,5.,0.],[2.,0.,2.])
+    loads,center,moment=distribute_wrench(xyz,{n:1. for n in xyz},[10.,0.,-20.],[0.,5.,0.],[2.,0.,2.],allow_opposite_traction=True)
     assert np.allclose(sum(loads.values()),[10.,0.,-20.])
     assert np.allclose(sum(np.cross(xyz[n]-center,f) for n,f in loads.items()),[0.,45.,0.])
     assert np.allclose(moment,[0.,45.,0.])

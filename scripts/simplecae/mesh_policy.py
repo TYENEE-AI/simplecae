@@ -9,7 +9,7 @@ def mesh_policy(case):
         return {'applicable':False,'meaning':'Use component policies for robot FEM; no structural mesh contract imposed on calculation-only checks.'}
     sizes=case.get('mesh',{}).get('sizes_mm',[])
     factor=.7  # Planning example inside all supported ratio ranges, not a gate.
-    proposed=[sizes[0]*factor**i for i in range(3)] if sizes else None
+    proposed=[float(format(sizes[0]*factor**i,'.6g')) for i in range(3)] if sizes else None
     return {'applicable':True,'minimum_levels':3,'exact_levels':count,
             'successive_ratio_minimum':lower,'successive_ratio_maximum':upper,
             'requested_sizes_mm':sizes,'legal_example_sizes_mm':proposed,

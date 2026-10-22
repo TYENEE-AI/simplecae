@@ -1,0 +1,5614 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SimpleCAE case: supported versioned syntax, with additional semantic checks by check/analyze",
+  "$defs": {
+    "selector": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "plane"
+            },
+            "axis": {
+              "enum": [
+                "x",
+                "y",
+                "z"
+              ]
+            },
+            "position_mm": {
+              "type": "number"
+            },
+            "tolerance_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "normal": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "offset_mm": {
+              "type": "number"
+            },
+            "tol_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "oneOf": [
+            {
+              "required": [
+                "axis",
+                "position_mm"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "normal"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "offset_mm"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "tol_mm"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "required": [
+                "normal",
+                "offset_mm"
+              ],
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "axis"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "position_mm"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "tolerance_mm"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "face_ids"
+            },
+            "ids": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "geometry_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{64}$"
+            }
+          },
+          "required": [
+            "type",
+            "ids",
+            "geometry_sha256"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "interface"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "by_normal"
+            },
+            "dir": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "max_angle_deg": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 180
+            }
+          },
+          "required": [
+            "type",
+            "dir",
+            "max_angle_deg"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_bbox_mm": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "units": {
+          "enum": [
+            "m",
+            "mm",
+            "cm"
+          ]
+        },
+        "source_up_axis": {
+          "enum": [
+            "y",
+            "z"
+          ]
+        },
+        "scene_node": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pose": {
+          "enum": [
+            "rest"
+          ]
+        },
+        "interface_manifest": {
+          "type": "string",
+          "minLength": 1
+        },
+        "solid_id": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "geometry_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{64}$"
+            }
+          },
+          "required": [
+            "id",
+            "geometry_sha256"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "material": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "elastic_model": {
+          "enum": [
+            "isotropic",
+            "orthotropic"
+          ]
+        },
+        "youngs_modulus_mpa": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "poisson_ratio": {
+          "type": "number",
+          "exclusiveMinimum": -1,
+          "exclusiveMaximum": 0.5
+        },
+        "yield_strength_mpa": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "failure_criterion": {
+          "enum": [
+            "not_specified",
+            "von_mises_yield",
+            "max_stress"
+          ]
+        },
+        "density_kg_m3": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "engineering_constants": {
+          "type": "object",
+          "properties": {
+            "e1_mpa": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "e2_mpa": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "e3_mpa": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "nu12": {
+              "type": "number"
+            },
+            "nu13": {
+              "type": "number"
+            },
+            "nu23": {
+              "type": "number"
+            },
+            "g12_mpa": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "g13_mpa": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "g23_mpa": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "e1_mpa",
+            "e2_mpa",
+            "e3_mpa",
+            "nu12",
+            "nu13",
+            "nu23",
+            "g12_mpa",
+            "g13_mpa",
+            "g23_mpa"
+          ],
+          "additionalProperties": false
+        },
+        "orientation": {
+          "type": "object",
+          "properties": {
+            "axis_1": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "axis_2": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "required": [
+            "axis_1",
+            "axis_2"
+          ],
+          "additionalProperties": false
+        },
+        "strengths": {
+          "type": "object",
+          "properties": {
+            "tension_mpa": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "compression_mpa": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "shear_mpa": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "required": [
+            "tension_mpa",
+            "compression_mpa",
+            "shear_mpa"
+          ],
+          "additionalProperties": false
+        },
+        "calibration": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "coupon_tests",
+                "literature",
+                "mathematical_reference"
+              ]
+            },
+            "reference": {
+              "type": "string",
+              "minLength": 1
+            },
+            "applicability": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "reference",
+            "applicability"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "name",
+        "source"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "elastic_model": {
+                "const": "orthotropic"
+              }
+            },
+            "required": [
+              "elastic_model"
+            ]
+          },
+          "then": {
+            "required": [
+              "engineering_constants",
+              "orientation"
+            ]
+          },
+          "else": {
+            "required": [
+              "youngs_modulus_mpa",
+              "poisson_ratio"
+            ]
+          }
+        }
+      ]
+    },
+    "support": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "$ref": "#/$defs/selector"
+        },
+        "dofs": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "name",
+        "selector"
+      ],
+      "additionalProperties": false
+    },
+    "load": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "$ref": "#/$defs/selector"
+        },
+        "total_force_n": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "total_moment_n_mm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "application_point_mm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "scalable": {
+          "type": "boolean"
+        },
+        "distribution": {
+          "enum": [
+            "consistent",
+            "bearing_only"
+          ]
+        },
+        "allow_opposite_traction": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "selector",
+        "total_force_n"
+      ],
+      "additionalProperties": false
+    },
+    "criteria": {
+      "type": "object",
+      "properties": {
+        "yield_safety_factor": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "strength_safety_factor": {
+          "type": "number",
+          "minimum": 1
+        },
+        "max_displacement_mm": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_small_displacement_ratio": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_strain_norm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "mesh": {
+      "type": "object",
+      "properties": {
+        "sizes_mm": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "minItems": 3
+        },
+        "displacement_relative_tolerance": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "stress_relative_tolerance": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "balance_relative_tolerance": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_elements": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "local_refinements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "selector": {
+                "$ref": "#/$defs/selector"
+              },
+              "size_factor": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              },
+              "distance_mm": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "sampling": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 500
+              }
+            },
+            "required": [
+              "name",
+              "selector",
+              "size_factor",
+              "distance_mm"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "preserve_boundary_nodes": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sizes_mm"
+      ],
+      "additionalProperties": false
+    },
+    "conditions": {
+      "type": "object",
+      "properties": {
+        "material_verified": {
+          "type": "boolean"
+        },
+        "dimensions_verified": {
+          "type": "boolean"
+        },
+        "supports_represent_actual_mounting": {
+          "type": "boolean"
+        },
+        "load_pattern_verified": {
+          "type": "boolean"
+        },
+        "self_weight_negligible": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "material_verified",
+        "dimensions_verified",
+        "supports_represent_actual_mounting",
+        "load_pattern_verified",
+        "self_weight_negligible"
+      ],
+      "additionalProperties": false
+    },
+    "gravity": {
+      "type": "object",
+      "properties": {
+        "acceleration_m_s2": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "required": [
+        "acceleration_m_s2"
+      ],
+      "additionalProperties": false
+    },
+    "buckling": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "modes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "safety_factor": {
+          "type": "number",
+          "minimum": 1
+        },
+        "eigenvalue_relative_tolerance": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "generator": {},
+        "model_id": {},
+        "revision": {},
+        "parameters": {},
+        "task_id": {},
+        "source_file": {},
+        "generator_version": {}
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "probe": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "direction": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "max_displacement_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "absolute_convergence_tolerance_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "convergence_required": {
+              "type": "boolean"
+            },
+            "type": {
+              "const": "point"
+            },
+            "point_mm": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name",
+            "type",
+            "point_mm"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "direction": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "max_displacement_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "absolute_convergence_tolerance_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "convergence_required": {
+              "type": "boolean"
+            },
+            "type": {
+              "const": "surface_average"
+            },
+            "selector": {
+              "$ref": "#/$defs/selector"
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name",
+            "type",
+            "selector"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "direction": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "max_displacement_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "absolute_convergence_tolerance_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "convergence_required": {
+              "type": "boolean"
+            },
+            "type": {
+              "enum": [
+                "relative",
+                "relative_length"
+              ]
+            },
+            "from_probe": {
+              "type": "string",
+              "minLength": 1
+            },
+            "to_probe": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name",
+            "type",
+            "from_probe",
+            "to_probe"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "solid": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "enum": [
+            "1.0",
+            "2.0"
+          ]
+        },
+        "reference_only": {
+          "type": "boolean"
+        },
+        "model": {
+          "$ref": "#/$defs/model"
+        },
+        "material": {
+          "$ref": "#/$defs/material"
+        },
+        "supports": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/support"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "point_mm": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "dofs": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3
+                    },
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "uniqueItems": true
+                  },
+                  "geometry_sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{64}$"
+                  }
+                },
+                "required": [
+                  "name",
+                  "point_mm",
+                  "dofs",
+                  "geometry_sha256"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 1
+        },
+        "loads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/load"
+          },
+          "minItems": 0
+        },
+        "criteria": {
+          "$ref": "#/$defs/criteria"
+        },
+        "mesh": {
+          "$ref": "#/$defs/mesh"
+        },
+        "conditions": {
+          "$ref": "#/$defs/conditions"
+        },
+        "notes": {},
+        "gravity": {
+          "$ref": "#/$defs/gravity"
+        },
+        "buckling": {
+          "$ref": "#/$defs/buckling"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        },
+        "load_cases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "loads": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/load"
+                },
+                "minItems": 0
+              },
+              "gravity": {
+                "$ref": "#/$defs/gravity"
+              }
+            },
+            "required": [
+              "name",
+              "loads"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "probes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/probe"
+          },
+          "minItems": 0
+        },
+        "stress_regions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "min_mm": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "max_mm": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "body": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "name",
+              "min_mm",
+              "max_mm"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "schema_version",
+        "model",
+        "material",
+        "supports",
+        "loads",
+        "criteria",
+        "mesh",
+        "conditions"
+      ],
+      "additionalProperties": false
+    },
+    "assembly_support": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "$ref": "#/$defs/selector"
+        },
+        "dofs": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "service_displacement_mm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "required": [
+        "name",
+        "body",
+        "selector"
+      ],
+      "additionalProperties": false
+    },
+    "assembly_load": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "$ref": "#/$defs/selector"
+        },
+        "total_force_n": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "total_moment_n_mm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "application_point_mm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "scalable": {
+          "type": "boolean"
+        },
+        "distribution": {
+          "enum": [
+            "consistent",
+            "bearing_only"
+          ]
+        },
+        "allow_opposite_traction": {
+          "type": "boolean"
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "body",
+        "selector",
+        "total_force_n"
+      ],
+      "additionalProperties": false
+    },
+    "assembly": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "assembly-1.0"
+        },
+        "bodies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "model": {
+                "$ref": "#/$defs/model"
+              },
+              "material": {
+                "$ref": "#/$defs/material"
+              },
+              "placement": {
+                "type": "object",
+                "properties": {
+                  "translation_mm": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "rpy_rad": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  }
+                },
+                "required": [
+                  "translation_mm",
+                  "rpy_rad"
+                ],
+                "additionalProperties": false
+              },
+              "mesh_size_factor": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "local_refinements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "selector": {
+                      "$ref": "#/$defs/selector"
+                    },
+                    "size_factor": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 1
+                    },
+                    "distance_mm": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "sampling": {
+                      "type": "integer",
+                      "minimum": 10,
+                      "maximum": 500
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "selector",
+                    "size_factor",
+                    "distance_mm"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0
+              }
+            },
+            "required": [
+              "name",
+              "model",
+              "material"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2
+        },
+        "connections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "enum": [
+                  "bonded",
+                  "linear_interface",
+                  "frictionless_contact",
+                  "frictional_contact"
+                ]
+              },
+              "master": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "$ref": "#/$defs/selector"
+                  }
+                },
+                "required": [
+                  "body",
+                  "selector"
+                ],
+                "additionalProperties": false
+              },
+              "slave": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "$ref": "#/$defs/selector"
+                  }
+                },
+                "required": [
+                  "body",
+                  "selector"
+                ],
+                "additionalProperties": false
+              },
+              "position_tolerance_mm": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "normal": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "normal_stiffness_n_mm3": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "tangential_stiffness_n_mm3": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "max_quadrature_points": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200000
+              },
+              "calibration": {
+                "type": "object",
+                "properties": {
+                  "reference": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "applicability": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "reference",
+                  "applicability"
+                ],
+                "additionalProperties": false
+              },
+              "friction_coefficient": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "max_tangential_displacement_mm": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "slip_convergence_tolerance_mm": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "initial_gap_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "gap_convergence_tolerance_mm": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "footprint": {
+                "enum": [
+                  "matching",
+                  "slave_within_master"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "master",
+              "slave"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "supports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assembly_support"
+          },
+          "minItems": 1
+        },
+        "loads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assembly_load"
+          },
+          "minItems": 0
+        },
+        "criteria": {
+          "$ref": "#/$defs/criteria"
+        },
+        "mesh": {
+          "$ref": "#/$defs/mesh"
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "material_verified": {
+              "type": "boolean"
+            },
+            "dimensions_verified": {
+              "type": "boolean"
+            },
+            "supports_represent_actual_mounting": {
+              "type": "boolean"
+            },
+            "load_pattern_verified": {
+              "type": "boolean"
+            },
+            "self_weight_negligible": {
+              "type": "boolean"
+            },
+            "connection_parameters_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "material_verified",
+            "dimensions_verified",
+            "supports_represent_actual_mounting",
+            "load_pattern_verified",
+            "self_weight_negligible",
+            "connection_parameters_verified"
+          ],
+          "additionalProperties": false
+        },
+        "gravity": {
+          "$ref": "#/$defs/gravity"
+        },
+        "buckling": {
+          "$ref": "#/$defs/buckling"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        },
+        "notes": {},
+        "probes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/probe"
+          },
+          "minItems": 0
+        },
+        "stress_regions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "min_mm": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "max_mm": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "body": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "name",
+              "min_mm",
+              "max_mm"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "bolts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "master": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "$ref": "#/$defs/selector"
+                  }
+                },
+                "required": [
+                  "body",
+                  "selector"
+                ],
+                "additionalProperties": false
+              },
+              "slave": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "$ref": "#/$defs/selector"
+                  }
+                },
+                "required": [
+                  "body",
+                  "selector"
+                ],
+                "additionalProperties": false
+              },
+              "axis": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "axial_stiffness_n_mm": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "preload_n": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "allowable_tension_n": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "reference": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "name",
+              "master",
+              "slave",
+              "axis",
+              "axial_stiffness_n_mm",
+              "preload_n",
+              "allowable_tension_n",
+              "reference"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "contact_control": {
+          "type": "object",
+          "properties": {
+            "initial_increment": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "minimum_increment": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "maximum_increment": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "service_initial_increment": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "service_maximum_increment": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "max_increments": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "contact_change_relative_tolerance": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.001
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "bodies",
+        "connections",
+        "supports",
+        "loads",
+        "criteria",
+        "mesh",
+        "conditions"
+      ],
+      "additionalProperties": false
+    },
+    "robot_probe": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "direction": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "max_displacement_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "absolute_convergence_tolerance_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "convergence_required": {
+              "type": "boolean"
+            },
+            "type": {
+              "const": "point"
+            },
+            "point_m": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "link": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name",
+            "type",
+            "point_m",
+            "link"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "direction": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "max_displacement_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "absolute_convergence_tolerance_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "convergence_required": {
+              "type": "boolean"
+            },
+            "type": {
+              "const": "surface_average"
+            },
+            "component_selector": {
+              "$ref": "#/$defs/selector"
+            },
+            "link": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name",
+            "type",
+            "component_selector",
+            "link"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "direction": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "max_displacement_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "absolute_convergence_tolerance_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "convergence_required": {
+              "type": "boolean"
+            },
+            "type": {
+              "const": "relative"
+            },
+            "from_probe": {
+              "type": "string",
+              "minLength": 1
+            },
+            "to_probe": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name",
+            "type",
+            "from_probe",
+            "to_probe"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "actuation_reaction": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "joint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "driven": {
+          "type": "object",
+          "properties": {
+            "link": {
+              "type": "string",
+              "minLength": 1
+            },
+            "point_link_m": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "required": [
+            "link",
+            "point_link_m"
+          ],
+          "additionalProperties": false
+        },
+        "reaction": {
+          "type": "object",
+          "properties": {
+            "link": {
+              "type": "string",
+              "minLength": 1
+            },
+            "point_link_m": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "required": [
+            "link",
+            "point_link_m"
+          ],
+          "additionalProperties": false
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "joint",
+        "driven",
+        "reaction"
+      ],
+      "additionalProperties": false
+    },
+    "grasp": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "enum": [
+            "vertical_friction",
+            "finite_pad_wrench"
+          ]
+        },
+        "pad_contacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "normal_load_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "center_link_m": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "tangent_u_link": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "tangent_v_link": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "half_extents_m": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "required": [
+              "normal_load_name",
+              "center_link_m",
+              "tangent_u_link",
+              "tangent_v_link",
+              "half_extents_m"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "pad_wrench_mode": {
+          "enum": [
+            "declared_per_pad",
+            "total_wrench"
+          ]
+        },
+        "payload_names": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "normal_load_names": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true
+        },
+        "additional_tangential_load_names": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "friction_coefficient": {
+          "type": "number",
+          "minimum": 0
+        },
+        "slip_safety_factor": {
+          "type": "number",
+          "minimum": 1
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "friction_verified": {
+              "type": "boolean"
+            },
+            "force_verified": {
+              "type": "boolean"
+            },
+            "pad_contact_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "friction_verified",
+            "force_verified"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "payload_names",
+        "normal_load_names",
+        "friction_coefficient",
+        "slip_safety_factor",
+        "conditions"
+      ],
+      "additionalProperties": false
+    },
+    "robot": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "robot-1.0"
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "package_roots": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        "poses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "joints": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              }
+            },
+            "required": [
+              "name",
+              "joints"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "gravity_m_s2": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "base_pose": {
+          "type": "object",
+          "properties": {
+            "xyz_m": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "rpy_rad": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "required": [
+            "xyz_m",
+            "rpy_rad"
+          ],
+          "additionalProperties": false
+        },
+        "massless_links": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "base": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "fixed"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "contacts"
+                },
+                "points_world_m": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "minItems": 3
+                },
+                "friction_coefficient": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "type",
+                "points_world_m",
+                "friction_coefficient"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "payloads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "link": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mass_kg": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "center_m": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "scalable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "link",
+              "mass_kg",
+              "center_m"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "loads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "link": {
+                "type": "string",
+                "minLength": 1
+              },
+              "force_n": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "moment_n_m": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "position_m": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "frame": {
+                "enum": [
+                  "link",
+                  "world"
+                ]
+              },
+              "position_frame": {
+                "enum": [
+                  "link",
+                  "world"
+                ]
+              },
+              "scalable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "link",
+              "force_n",
+              "position_m"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "effort_safety_factor": {
+          "type": "number",
+          "minimum": 1
+        },
+        "effort_limits": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "inertials_verified": {
+              "type": "boolean"
+            },
+            "actuator_ratings_verified": {
+              "type": "boolean"
+            },
+            "mount_verified": {
+              "type": "boolean"
+            },
+            "poses_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "inertials_verified",
+            "actuator_ratings_verified",
+            "mount_verified",
+            "poses_verified"
+          ],
+          "additionalProperties": false
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "link": {
+                "type": "string",
+                "minLength": 1
+              },
+              "case_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "ports": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/selector"
+                }
+              },
+              "port_load_policies": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "distribution": {
+                      "enum": [
+                        "consistent",
+                        "bearing_only"
+                      ]
+                    },
+                    "allow_opposite_traction": {
+                      "type": "boolean"
+                    },
+                    "reference": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "reference"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "mass_relative_tolerance": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "com_tolerance_mm": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "link_from_component": {
+                "type": "object",
+                "properties": {
+                  "xyz_m": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "rpy_rad": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 3,
+                    "maxItems": 3
+                  }
+                },
+                "required": [
+                  "xyz_m",
+                  "rpy_rad"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "link",
+              "case_path",
+              "ports"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "required_components": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        },
+        "grasp": {
+          "$ref": "#/$defs/grasp"
+        },
+        "notes": {},
+        "probes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/robot_probe"
+          },
+          "minItems": 0
+        },
+        "actuation_reactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/actuation_reaction"
+          },
+          "minItems": 0
+        },
+        "elastic_transfer": {
+          "type": "object",
+          "properties": {
+            "rigid_links": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            },
+            "joints_locked_verified": {
+              "type": "boolean"
+            },
+            "max_rotation_rad": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 0.05
+            },
+            "max_section_warping_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "reference": {
+              "type": "string",
+              "minLength": 1
+            },
+            "joint_compliance": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "rotational_stiffness_n_m_rad": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "linear_stiffness_n_m": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "reference": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "verified": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "reference",
+                  "verified"
+                ],
+                "additionalProperties": false,
+                "oneOf": [
+                  {
+                    "required": [
+                      "rotational_stiffness_n_m_rad"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "linear_stiffness_n_m"
+                    ]
+                  }
+                ]
+              }
+            },
+            "rigid_joints": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "rigid_links",
+            "joints_locked_verified",
+            "max_rotation_rad",
+            "max_section_warping_mm",
+            "reference"
+          ],
+          "additionalProperties": false,
+          "dependentRequired": {
+            "joint_compliance": [
+              "rigid_joints"
+            ],
+            "rigid_joints": [
+              "joint_compliance"
+            ]
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "model",
+        "poses",
+        "gravity_m_s2",
+        "base",
+        "conditions"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/solid"
+    },
+    {
+      "$ref": "#/$defs/assembly"
+    },
+    {
+      "$ref": "#/$defs/robot"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "thermal-network-1.0"
+        },
+        "mode": {
+          "enum": [
+            "steady",
+            "transient"
+          ]
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "basis": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capacity_j_k": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "initial_temperature_c": {
+                "type": "number",
+                "minimum": -273.15
+              },
+              "biot_number": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "target",
+              "basis"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 128
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "a": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "b": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "const": "resistance"
+                  },
+                  "resistance_k_w": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "id",
+                  "a",
+                  "b",
+                  "target",
+                  "basis",
+                  "type",
+                  "resistance_k_w"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "a": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "b": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "const": "conduction"
+                  },
+                  "conductivity_w_mk": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "length_m": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "area_m2": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "id",
+                  "a",
+                  "b",
+                  "target",
+                  "basis",
+                  "type",
+                  "conductivity_w_mk",
+                  "length_m",
+                  "area_m2"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "a": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "b": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "const": "convection"
+                  },
+                  "coefficient_w_m2k": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "area_m2": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "id",
+                  "a",
+                  "b",
+                  "target",
+                  "basis",
+                  "type",
+                  "coefficient_w_m2k",
+                  "area_m2"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 4096
+        },
+        "fixed_temperature_c": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": -273.15
+          }
+        },
+        "heat_w": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "phases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "duration_s": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "fixed_temperature_c": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number",
+                  "minimum": -273.15
+                }
+              },
+              "heat_w": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              }
+            },
+            "required": [
+              "duration_s",
+              "fixed_temperature_c",
+              "heat_w"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 64
+        },
+        "steps_per_phase": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 2000
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "node": {
+                "type": "string",
+                "minLength": 1
+              },
+              "min_temperature_c": {
+                "type": "number",
+                "minimum": -273.15
+              },
+              "max_temperature_c": {
+                "type": "number",
+                "minimum": -273.15
+              }
+            },
+            "required": [
+              "id",
+              "node"
+            ],
+            "additionalProperties": false,
+            "anyOf": [
+              {
+                "required": [
+                  "min_temperature_c"
+                ]
+              },
+              {
+                "required": [
+                  "max_temperature_c"
+                ]
+              }
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 256
+        },
+        "property_temperature_range_c": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": -273.15
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "not_assessed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "properties_verified": {
+              "type": "boolean"
+            },
+            "boundaries_verified": {
+              "type": "boolean"
+            },
+            "lumping_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "properties_verified",
+            "boundaries_verified",
+            "lumping_verified"
+          ],
+          "additionalProperties": false
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "generator": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "task_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "mode",
+        "nodes",
+        "links",
+        "criteria",
+        "property_temperature_range_c",
+        "assumptions",
+        "not_assessed",
+        "conditions",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "thermal-solid-1.0"
+        },
+        "mode": {
+          "enum": [
+            "steady",
+            "transient"
+          ]
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "units": {
+              "const": "mm"
+            },
+            "interface_manifest": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_bbox_mm": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "path",
+            "units",
+            "expected_bbox_mm"
+          ],
+          "additionalProperties": false
+        },
+        "material": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            },
+            "conductivity_w_mk": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "density_kg_m3": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "specific_heat_j_kgk": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "temperature_range_c": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": -273.15
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "name",
+            "basis",
+            "conductivity_w_mk",
+            "temperature_range_c"
+          ],
+          "additionalProperties": false
+        },
+        "boundaries": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "plane"
+                          },
+                          "axis": {
+                            "enum": [
+                              "x",
+                              "y",
+                              "z"
+                            ]
+                          },
+                          "position_mm": {
+                            "type": "number"
+                          },
+                          "tolerance_mm": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "axis",
+                          "position_mm"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "face_ids"
+                          },
+                          "ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "minItems": 1,
+                            "uniqueItems": true
+                          },
+                          "geometry_sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "ids",
+                          "geometry_sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "type": {
+                    "const": "temperature"
+                  },
+                  "temperature_c": {
+                    "type": "number",
+                    "minimum": -273.15
+                  }
+                },
+                "required": [
+                  "name",
+                  "target",
+                  "basis",
+                  "selector",
+                  "type",
+                  "temperature_c"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "plane"
+                          },
+                          "axis": {
+                            "enum": [
+                              "x",
+                              "y",
+                              "z"
+                            ]
+                          },
+                          "position_mm": {
+                            "type": "number"
+                          },
+                          "tolerance_mm": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "axis",
+                          "position_mm"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "face_ids"
+                          },
+                          "ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "minItems": 1,
+                            "uniqueItems": true
+                          },
+                          "geometry_sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "ids",
+                          "geometry_sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "type": {
+                    "const": "heat_flux"
+                  },
+                  "flux_w_m2": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "name",
+                  "target",
+                  "basis",
+                  "selector",
+                  "type",
+                  "flux_w_m2"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "plane"
+                          },
+                          "axis": {
+                            "enum": [
+                              "x",
+                              "y",
+                              "z"
+                            ]
+                          },
+                          "position_mm": {
+                            "type": "number"
+                          },
+                          "tolerance_mm": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "axis",
+                          "position_mm"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "face_ids"
+                          },
+                          "ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "minItems": 1,
+                            "uniqueItems": true
+                          },
+                          "geometry_sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "ids",
+                          "geometry_sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "type": {
+                    "const": "heat_power"
+                  },
+                  "total_heat_w": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "name",
+                  "target",
+                  "basis",
+                  "selector",
+                  "type",
+                  "total_heat_w"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "plane"
+                          },
+                          "axis": {
+                            "enum": [
+                              "x",
+                              "y",
+                              "z"
+                            ]
+                          },
+                          "position_mm": {
+                            "type": "number"
+                          },
+                          "tolerance_mm": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "axis",
+                          "position_mm"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "face_ids"
+                          },
+                          "ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "minItems": 1,
+                            "uniqueItems": true
+                          },
+                          "geometry_sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "ids",
+                          "geometry_sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "type": {
+                    "const": "convection"
+                  },
+                  "ambient_temperature_c": {
+                    "type": "number",
+                    "minimum": -273.15
+                  },
+                  "coefficient_w_m2k": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "name",
+                  "target",
+                  "basis",
+                  "selector",
+                  "type",
+                  "ambient_temperature_c",
+                  "coefficient_w_m2k"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 64
+        },
+        "volumetric_heat_w_m3": {
+          "type": "number"
+        },
+        "initial_temperature_c": {
+          "type": "number",
+          "minimum": -273.15
+        },
+        "duration_s": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "time_steps": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 200
+        },
+        "mesh": {
+          "type": "object",
+          "properties": {
+            "sizes_mm": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "max_elements": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_field_values": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "local_refinements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "plane"
+                          },
+                          "axis": {
+                            "enum": [
+                              "x",
+                              "y",
+                              "z"
+                            ]
+                          },
+                          "position_mm": {
+                            "type": "number"
+                          },
+                          "tolerance_mm": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "axis",
+                          "position_mm"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "face_ids"
+                          },
+                          "ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "minItems": 1,
+                            "uniqueItems": true
+                          },
+                          "geometry_sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "ids",
+                          "geometry_sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "size_factor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 1
+                  },
+                  "distance_mm": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "sampling": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 500
+                  }
+                },
+                "required": [
+                  "name",
+                  "selector",
+                  "size_factor",
+                  "distance_mm"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
+            },
+            "preserve_boundary_nodes": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sizes_mm"
+          ],
+          "additionalProperties": false
+        },
+        "accuracy": {
+          "type": "object",
+          "properties": {
+            "temperature_tolerance_c": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "temperature_tolerance_c",
+            "basis"
+          ],
+          "additionalProperties": false
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "region": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "body"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "surface"
+                      },
+                      "selector": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "const": "plane"
+                              },
+                              "axis": {
+                                "enum": [
+                                  "x",
+                                  "y",
+                                  "z"
+                                ]
+                              },
+                              "position_mm": {
+                                "type": "number"
+                              },
+                              "tolerance_mm": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "axis",
+                              "position_mm"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "const": "face_ids"
+                              },
+                              "ids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer",
+                                  "minimum": 1
+                                },
+                                "minItems": 1,
+                                "uniqueItems": true
+                              },
+                              "geometry_sha256": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{64}$"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "ids",
+                              "geometry_sha256"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "const": "interface"
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "selector"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "min_temperature_c": {
+                "type": "number",
+                "minimum": -273.15
+              },
+              "max_temperature_c": {
+                "type": "number",
+                "minimum": -273.15
+              }
+            },
+            "required": [
+              "id",
+              "target",
+              "region"
+            ],
+            "additionalProperties": false,
+            "anyOf": [
+              {
+                "required": [
+                  "min_temperature_c"
+                ]
+              },
+              {
+                "required": [
+                  "max_temperature_c"
+                ]
+              }
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 32
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "not_assessed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "properties_verified": {
+              "type": "boolean"
+            },
+            "boundaries_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "properties_verified",
+            "boundaries_verified"
+          ],
+          "additionalProperties": false
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "generator": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "task_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "mode",
+        "model",
+        "material",
+        "boundaries",
+        "mesh",
+        "criteria",
+        "assumptions",
+        "not_assessed",
+        "conditions",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "modal-solid-1.0"
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "units": {
+              "const": "mm"
+            },
+            "interface_manifest": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_bbox_mm": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "path",
+            "units",
+            "expected_bbox_mm"
+          ],
+          "additionalProperties": false
+        },
+        "material": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            },
+            "young_mpa": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "density_kg_m3": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "poisson": {
+              "type": "number",
+              "exclusiveMinimum": -1,
+              "exclusiveMaximum": 0.49
+            }
+          },
+          "required": [
+            "name",
+            "basis",
+            "young_mpa",
+            "density_kg_m3",
+            "poisson"
+          ],
+          "additionalProperties": false
+        },
+        "support_mode": {
+          "enum": [
+            "supported",
+            "free_body"
+          ]
+        },
+        "supports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "basis": {
+                "type": "string",
+                "minLength": 1
+              },
+              "selector": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "plane"
+                      },
+                      "axis": {
+                        "enum": [
+                          "x",
+                          "y",
+                          "z"
+                        ]
+                      },
+                      "position_mm": {
+                        "type": "number"
+                      },
+                      "tolerance_mm": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "axis",
+                      "position_mm"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "face_ids"
+                      },
+                      "ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      },
+                      "geometry_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ids",
+                      "geometry_sha256"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "interface"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "dofs": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "enum": [
+                    1,
+                    2,
+                    3
+                  ]
+                },
+                "minItems": 1,
+                "maxItems": 3,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "name",
+              "target",
+              "basis",
+              "selector"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 32
+        },
+        "attached_masses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mass_kg": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "selector": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "plane"
+                      },
+                      "axis": {
+                        "enum": [
+                          "x",
+                          "y",
+                          "z"
+                        ]
+                      },
+                      "position_mm": {
+                        "type": "number"
+                      },
+                      "tolerance_mm": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "axis",
+                      "position_mm"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "face_ids"
+                      },
+                      "ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true
+                      },
+                      "geometry_sha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ids",
+                      "geometry_sha256"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "const": "interface"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "basis": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "name",
+              "mass_kg",
+              "selector",
+              "basis"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "elastic_mode_count": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 30
+        },
+        "mesh": {
+          "type": "object",
+          "properties": {
+            "sizes_mm": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "max_elements": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "local_refinements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "selector": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "plane"
+                          },
+                          "axis": {
+                            "enum": [
+                              "x",
+                              "y",
+                              "z"
+                            ]
+                          },
+                          "position_mm": {
+                            "type": "number"
+                          },
+                          "tolerance_mm": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "axis",
+                          "position_mm"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "face_ids"
+                          },
+                          "ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "minItems": 1,
+                            "uniqueItems": true
+                          },
+                          "geometry_sha256": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "ids",
+                          "geometry_sha256"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "const": "interface"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "size_factor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 1
+                  },
+                  "distance_mm": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "sampling": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 500
+                  }
+                },
+                "required": [
+                  "name",
+                  "selector",
+                  "size_factor",
+                  "distance_mm"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
+            },
+            "preserve_boundary_nodes": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "sizes_mm"
+          ],
+          "additionalProperties": false
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "const": "minimum_elastic_frequency"
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "minimum_hz": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "id",
+                  "type",
+                  "target",
+                  "basis",
+                  "minimum_hz"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "const": "avoid_excitation_band"
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "band_hz": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  "separation_ratio": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "type",
+                  "target",
+                  "basis",
+                  "band_hz",
+                  "separation_ratio"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 32
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "not_assessed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "properties_verified": {
+              "type": "boolean"
+            },
+            "mounting_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "properties_verified",
+            "mounting_verified"
+          ],
+          "additionalProperties": false
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "generator": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "task_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "model",
+        "material",
+        "support_mode",
+        "supports",
+        "elastic_mode_count",
+        "mesh",
+        "criteria",
+        "assumptions",
+        "not_assessed",
+        "conditions",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "motion-loads-1.0"
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "units": {
+              "const": "m"
+            },
+            "package_roots": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "path",
+            "units"
+          ],
+          "additionalProperties": false
+        },
+        "massless_links": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "base": {
+          "const": "fixed"
+        },
+        "base_pose": {
+          "type": "object",
+          "properties": {
+            "xyz_m": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "rpy_rad": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "required": [
+            "xyz_m",
+            "rpy_rad"
+          ],
+          "additionalProperties": false
+        },
+        "gravity_m_s2": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "basis": {
+                "type": "string",
+                "minLength": 1
+              },
+              "positions": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "velocities": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "accelerations": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "loads": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "link": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "force_n": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "moment_n_m": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "position_m": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "frame": {
+                      "enum": [
+                        "world",
+                        "link"
+                      ]
+                    },
+                    "position_frame": {
+                      "enum": [
+                        "world",
+                        "link"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "link",
+                    "force_n",
+                    "moment_n_m",
+                    "position_m",
+                    "frame",
+                    "position_frame"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0,
+                "maxItems": 128
+              }
+            },
+            "required": [
+              "id",
+              "basis",
+              "positions",
+              "velocities",
+              "accelerations",
+              "loads"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 128
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "const": "joint_effort"
+                  },
+                  "joint": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "max_abs_effort": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "rating_max_abs_speed": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "id",
+                  "target",
+                  "basis",
+                  "type",
+                  "joint",
+                  "max_abs_effort",
+                  "rating_max_abs_speed"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "basis": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "type": {
+                    "enum": [
+                      "base_force",
+                      "base_moment"
+                    ]
+                  },
+                  "limit": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "id",
+                  "target",
+                  "basis",
+                  "type",
+                  "limit"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 128
+        },
+        "coverage_basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "not_assessed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "inertials_verified": {
+              "type": "boolean"
+            },
+            "motion_states_verified": {
+              "type": "boolean"
+            },
+            "ratings_verified": {
+              "type": "boolean"
+            },
+            "mount_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "inertials_verified",
+            "motion_states_verified",
+            "ratings_verified",
+            "mount_verified"
+          ],
+          "additionalProperties": false
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "generator": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "task_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "model",
+        "massless_links",
+        "base",
+        "base_pose",
+        "gravity_m_s2",
+        "states",
+        "criteria",
+        "coverage_basis",
+        "assumptions",
+        "not_assessed",
+        "conditions",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "fatigue-data-1.0"
+        },
+        "material": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "manufacture": {
+              "type": "string",
+              "minLength": 1
+            },
+            "orientation": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "id",
+            "manufacture",
+            "orientation"
+          ],
+          "additionalProperties": false
+        },
+        "temperature_c": {
+          "type": "number",
+          "exclusiveMinimum": -273.15
+        },
+        "stress_definition": {
+          "const": "signed_uniaxial_local"
+        },
+        "geometry_source": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "basis"
+          ],
+          "additionalProperties": false
+        },
+        "stress_source": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "basis"
+          ],
+          "additionalProperties": false
+        },
+        "service_source": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "basis"
+          ],
+          "additionalProperties": false
+        },
+        "material_curve": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "material": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "manufacture": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "orientation": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "manufacture",
+                    "orientation"
+                  ],
+                  "additionalProperties": false
+                },
+                "temperature_c": {
+                  "type": "number",
+                  "exclusiveMinimum": -273.15
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "basis": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256",
+                    "basis"
+                  ],
+                  "additionalProperties": false
+                },
+                "kind": {
+                  "enum": [
+                    "mathematical_reference",
+                    "literature",
+                    "coupon_tests"
+                  ]
+                },
+                "stress_definition": {
+                  "const": "signed_uniaxial_local"
+                },
+                "applicability_basis": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "curves": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "stress_ratio": {
+                        "type": "number"
+                      },
+                      "amplitude_mpa": {
+                        "type": "array",
+                        "items": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "minItems": 2,
+                        "maxItems": 1000
+                      },
+                      "cycles_to_failure": {
+                        "type": "array",
+                        "items": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "minItems": 2,
+                        "maxItems": 1000
+                      }
+                    },
+                    "required": [
+                      "stress_ratio",
+                      "amplitude_mpa",
+                      "cycles_to_failure"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minItems": 1,
+                  "maxItems": 128
+                }
+              },
+              "required": [
+                "material",
+                "temperature_c",
+                "source",
+                "kind",
+                "stress_definition",
+                "applicability_basis",
+                "curves"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "service": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "cycles": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "basis": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "cycles",
+              "basis"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 4096
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "position_mm": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "frame": {
+                "type": "string",
+                "minLength": 1
+              },
+              "direction": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "blocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "service_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "minimum_mpa": {
+                      "type": "number"
+                    },
+                    "maximum_mpa": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "service_id",
+                    "minimum_mpa",
+                    "maximum_mpa"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 4096
+              }
+            },
+            "required": [
+              "id",
+              "target",
+              "position_mm",
+              "frame",
+              "direction",
+              "blocks"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 256
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "point": {
+                "type": "string",
+                "minLength": 1
+              },
+              "basis": {
+                "type": "string",
+                "minLength": 1
+              },
+              "max_damage": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "id",
+              "point",
+              "basis",
+              "max_damage"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "not_assessed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "material_data_verified": {
+              "type": "boolean"
+            },
+            "stress_history_verified": {
+              "type": "boolean"
+            },
+            "service_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "material_data_verified",
+            "stress_history_verified",
+            "service_verified"
+          ],
+          "additionalProperties": false
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "generator": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "task_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "material",
+        "temperature_c",
+        "stress_definition",
+        "geometry_source",
+        "stress_source",
+        "service_source",
+        "material_curve",
+        "service",
+        "points",
+        "criteria",
+        "assumptions",
+        "not_assessed",
+        "conditions",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "creep-data-1.0"
+        },
+        "material": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "manufacture": {
+              "type": "string",
+              "minLength": 1
+            },
+            "orientation": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "id",
+            "manufacture",
+            "orientation"
+          ],
+          "additionalProperties": false
+        },
+        "temperature_c": {
+          "type": "number",
+          "exclusiveMinimum": -273.15
+        },
+        "stress_definition": {
+          "const": "signed_uniaxial_local"
+        },
+        "geometry_source": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "basis"
+          ],
+          "additionalProperties": false
+        },
+        "stress_source": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "basis"
+          ],
+          "additionalProperties": false
+        },
+        "service_source": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "path",
+            "sha256",
+            "basis"
+          ],
+          "additionalProperties": false
+        },
+        "material_curve": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "material": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "manufacture": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "orientation": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "manufacture",
+                    "orientation"
+                  ],
+                  "additionalProperties": false
+                },
+                "temperature_c": {
+                  "type": "number",
+                  "exclusiveMinimum": -273.15
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "basis": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256",
+                    "basis"
+                  ],
+                  "additionalProperties": false
+                },
+                "kind": {
+                  "enum": [
+                    "mathematical_reference",
+                    "literature",
+                    "coupon_tests"
+                  ]
+                },
+                "stress_definition": {
+                  "const": "signed_uniaxial_local"
+                },
+                "applicability_basis": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "strain_measure": {
+                  "enum": [
+                    "creep_only_magnitude",
+                    "total_axial_strain_magnitude"
+                  ]
+                },
+                "stress_levels_mpa": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 1,
+                  "maxItems": 256
+                },
+                "times_s": {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "minItems": 2,
+                  "maxItems": 4096
+                },
+                "strain": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "minItems": 2,
+                    "maxItems": 4096
+                  },
+                  "minItems": 1,
+                  "maxItems": 256
+                }
+              },
+              "required": [
+                "material",
+                "temperature_c",
+                "source",
+                "kind",
+                "stress_definition",
+                "applicability_basis",
+                "strain_measure",
+                "stress_levels_mpa",
+                "times_s",
+                "strain"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "duration_s": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "history": {
+              "const": "constant_from_unloaded"
+            },
+            "basis": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "duration_s",
+            "history",
+            "basis"
+          ],
+          "additionalProperties": false
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1
+              },
+              "position_mm": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "frame": {
+                "type": "string",
+                "minLength": 1
+              },
+              "direction": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "stress_mpa": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "target",
+              "position_mm",
+              "frame",
+              "direction",
+              "stress_mpa"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 256
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "point": {
+                "type": "string",
+                "minLength": 1
+              },
+              "basis": {
+                "type": "string",
+                "minLength": 1
+              },
+              "max_strain": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 1
+              }
+            },
+            "required": [
+              "id",
+              "point",
+              "basis",
+              "max_strain"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "strain_measure": {
+          "enum": [
+            "creep_only_magnitude",
+            "total_axial_strain_magnitude"
+          ]
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "not_assessed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "conditions": {
+          "type": "object",
+          "properties": {
+            "material_data_verified": {
+              "type": "boolean"
+            },
+            "stress_history_verified": {
+              "type": "boolean"
+            },
+            "service_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "material_data_verified",
+            "stress_history_verified",
+            "service_verified"
+          ],
+          "additionalProperties": false
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "generator": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "task_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "material",
+        "temperature_c",
+        "stress_definition",
+        "geometry_source",
+        "stress_source",
+        "service_source",
+        "material_curve",
+        "service",
+        "points",
+        "criteria",
+        "strain_measure",
+        "assumptions",
+        "not_assessed",
+        "conditions",
+        "provenance"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

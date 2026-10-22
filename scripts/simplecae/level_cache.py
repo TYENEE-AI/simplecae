@@ -110,9 +110,25 @@ def verify_deck(case,mesh,directory,filename='job'):
 
 def verify_buckling(case,mesh,directory,cached):
     from .buckling import parse_buckling_dat,write_buckling_deck
-    directory=Path(directory);inp=directory/'reconstructed-buckling.inp';write_buckling_deck(case,mesh,inp)
-    if sha256(inp)!=sha256(directory/'buckling.inp'):raise ValueError('reused buckling deck differs from current physics')
-    factors,modes=parse_buckling_dat(directory/'buckling.dat')
+    directory=Path(directory)
+    proof=json.loads((directory/'buckling-normalization.json').read_text(encoding='utf-8'))
+    attempts=proof['attempts'];previous=None;stable=False
+    if len(attempts)<2 or not cached.get('reference_normalization_verified'):
+        raise ValueError('reused buckling result lacks reference-scale qualification')
+    for index,attempt in enumerate(attempts):
+        scale=attempt['reference_scale']
+        if not 0<scale<=1:raise ValueError('invalid buckling reference scale')
+        stem='buckling' if index==0 else f'buckling-normalized-{index}'
+        inp=directory/('reconstructed-'+stem+'.inp');write_buckling_deck(case,mesh,inp,scale)
+        if sha256(inp)!=sha256(directory/(stem+'.inp')):raise ValueError('reused buckling deck differs from current physics')
+        raw,modes=parse_buckling_dat(directory/(stem+'.dat'))
+        factors=[dict(row,load_factor=row['load_factor']*scale) for row in raw]
+        if raw!=attempt['raw_factors'] or factors!=attempt['original_load_factors']:raise ValueError('reused buckling normalization differs from native fields')
+        positive=sorted(r['load_factor'] for r in factors if r['load_factor']>0)
+        stable=previous is not None and bool(positive) and len(positive)==len(previous) and all(abs(a-b)<=1e-3*max(abs(a),abs(b)) for a,b in zip(previous,positive))
+        previous=positive
+    if not stable or min((r['load_factor'] for r in raw if r['load_factor']>0),default=0)<100:
+        raise ValueError('reused buckling reference-scale verification failed')
     if factors!=cached['factors'] or set(modes)!=set(cached['available_modes']):raise ValueError('reused buckling factor/mode mismatch')
     for values in modes.values():
         if set(values)!=set(mesh[0]) or not all(np.all(np.isfinite(v)) for v in values.values()) or max(np.linalg.norm(v) for v in values.values())<=0:

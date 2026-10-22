@@ -1,0 +1,16 @@
+[addon]
+name = "simplecae"
+version = "1.6.0"
+license = "GPL-3.0-or-later"
+skill_path = "skill"
+
+[compat]
+sca = ">=2.2.6.post2,<3"
+
+[runtime]
+kind = "python-env"
+platforms = ["windows-x86_64", "linux-x86_64", "macos-arm64"]
+check_cmd = '"{runtime_dir}/.venv/bin/python" "{addon_dir}/scripts/addon_probe.py"'
+
+[runtime.check_overrides]
+windows-x86_64 = "powershell -NoProfile -NonInteractive -Command ^& '{runtime_dir}/.venv/Scripts/python.exe' '{addon_dir}/scripts/addon_probe.py'; exit $LASTEXITCODE"

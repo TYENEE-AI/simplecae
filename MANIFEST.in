@@ -2,6 +2,10 @@ recursive-include assets *
 recursive-include examples *
 recursive-include licenses *
 include LICENSE NOTICE.md
+include sca-addon.toml SKILL.md
+recursive-include references *
 global-exclude *.pyc *.pyo
+global-exclude */__marimo__/* */__pycache__/* */.pytest_cache/*
 prune assets/__pycache__
 prune examples/__pycache__
+prune examples/integration/__marimo__

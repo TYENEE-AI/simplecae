@@ -1,4 +1,6 @@
 # Python 3.11 environment verified on Windows, 2026-10-13.
+antlr4-python3-runtime==4.13.2
+steputils==0.1
 attrs==26.1.0
 colorama==0.4.6
 contourpy==1.3.3

@@ -63,6 +63,11 @@ def detailed_features(case, path, seen=None):
 
 def joint_displacement_guidance(result, governing, failed):
     """Explain a controlling measured joint term, without changing any verdict."""
+    case=result.get('case',{})
+    transfer=case.get('elastic_transfer',{})
+    if result.get('status') not in ('invalid',None) and case.get('probes') and transfer and not transfer.get('joints_locked_verified') and not transfer.get('joint_compliance'):
+        return {'focus':'joint_compliance','evidence_status':'needs_information',
+                'message':'末端定位检查缺少输出侧关节刚度或关节锁定证据。先取得保持姿态、控制状态和刚度/回差数据；URDF effort 是力矩限值，不能换算成刚度。当前连杆位移不能解释完整的实测下垂。'}
     name = (governing or {}).get('name')
     for pose in result.get('poses', []):
         assessment = pose.get('task_probe_assessment') or {}
@@ -109,6 +114,7 @@ def feedback(result, context, run_state):
         return design_feedback(result, context, run_state)
     signal_value = design_signal(result)
     findings = copy.deepcopy(signal_value['feedback'])
+    findings.extend(result.get('cad_metadata',[]))
     assessment = result.get('assessment', {})
     observations = []
     stages = [('service', result.get('levels', []))]
@@ -123,6 +129,11 @@ def feedback(result, context, run_state):
                 'max_von_mises_mpa': r.get('max_von_mises_mpa'),
                 'max_displacement_mm': r.get('max_displacement_mm'),
                 'numerical_acceptance_complete': signal_value['valid_for_comparison']})
+            for load in level.get('mesh',{}).get('loads',[]):
+                diagnostic=load.get('distribution_diagnostic',{})
+                if diagnostic.get('warnings') or diagnostic.get('assumptions'):
+                    findings.append({'kind':'load_distribution','stage':stage,'load':load.get('name'),
+                                     'mesh_size_mm':level.get('mesh_size_mm'),**diagnostic})
     criteria = signal_value.get('criterion_assessments', {})
     utilizations = dict(signal_value.get('utilizations', {}))
     utilizations.update({name: e.get('utilization') for name, e in criteria.items()})
@@ -149,6 +160,10 @@ def feedback(result, context, run_state):
             'suggestion': 'Compare section depth, real transition radius or load-spreading area at the controlling region. Change one relevant parameter first; retain loads, materials, mounting and acceptance gates.' if confirmed_failure
                 else 'Keep a passing geometry unless the user has a further optimization objective. For incomplete evidence, resolve validity before interpreting a peak as weak geometry.'})
     actions = []
+    singularity=result.get('singularity_diagnostic')
+    if singularity and singularity.get('classification')=='likely_singular':
+        findings.append({'kind':'singularity_hypothesis',**singularity})
+        actions.append('Review the located CAD edge and physical load/support transition, then make the indicated CAD change and reanalyze. Further refinement alone is not the next action; raw peaks and criteria are retained.')
     if run_state == 'budget_exhausted':
         actions.append('Inspect the last real stage in worker.stderr.log. Continue detailed verification only if it can change the design decision; an unfinished model has no passing verdict or comparison margin.')
     elif result.get('error'):
@@ -159,13 +174,13 @@ def feedback(result, context, run_state):
         actions.append('Retain the passing scoped geometry and continue the remaining use requirements. A passing check does not require an automatic CAD change or establish a product rating.')
     else:
         actions.append('Generate a revision from the located finding, then repeat with the same task contract and design context; compare only completed valid results.')
-    if signal_value['valid_for_comparison'] and signal_value['feasible_under_stated_model'] is False:
-        guidance = joint_displacement_guidance(result,
-            {'name': governing[0]} if governing else None,
-            {k: v for k, v in criteria.items() if v.get('status') == 'fail_under_stated_model'})
-        if guidance:
-            actions[0] = guidance['message']
-            findings.append({'kind': 'design_guidance', 'scope': 'joint_compliance', **guidance})
+    guidance = joint_displacement_guidance(result,
+        {'name': governing[0]} if governing else None,
+        {k: v for k, v in criteria.items() if v.get('status') == 'fail_under_stated_model'})
+    if guidance and (guidance.get('evidence_status')=='needs_information' or
+                     signal_value['valid_for_comparison'] and signal_value['feasible_under_stated_model'] is False):
+        actions[0] = guidance['message']
+        findings.append({'kind': 'design_guidance', 'scope': 'joint_compliance', **guidance})
     if governing and '/actuator/' in governing[0] and signal_value['valid_for_comparison'] and signal_value['feasible_under_stated_model'] is False:
         findings.append({'kind': 'design_hypothesis', 'scope': 'actuator_load_path',
             'governing': {'name': governing[0], 'utilization': governing[1]}, 'requires_reanalysis': True,
@@ -291,10 +306,14 @@ def design_check(case_path, out, *, context_path, depth='design', budget_seconds
     started = time.monotonic()
     process = None
     state = 'completed'
+    from .process_lock import identity
+    ownership=out/'worker-ownership.json'
+    write_json(ownership,{'owner':identity(),'worker':None,'deadline_monotonic':started+budget_seconds})
+    worker_env=dict(os.environ,SIMPLECAE_WORKER_OWNERSHIP=str(ownership.resolve()))
     with (out / 'worker.stdout.log').open('wb') as stdout, (out / 'worker.stderr.log').open('wb') as stderr:
         try:
             process = subprocess.Popen(command, stdout=stdout, stderr=stderr,
-                **worker_group_options())
+                env=worker_env,**worker_group_options())
             try:
                 process.wait(timeout=max(0, budget_seconds - (time.monotonic() - started)))
             except subprocess.TimeoutExpired:

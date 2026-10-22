@@ -1,0 +1,60 @@
+{
+  "schema_version": "simplecae-task-1.0",
+  "task_id": "s02_sensor_mast",
+  "request": "Check a bolted sensor mast after adding R0.8 mm root transitions. Keep original material, load, mounting and numerical criteria.",
+  "scenarios": [
+    {
+      "id": "hold",
+      "use": "A sensor mast held by a frictional foot and two preloaded axial bolts.",
+      "success": "Displacement <=0.3 mm and strength FoS2; full preload, lock and service stages with converged root stresses."
+    }
+  ],
+  "checks": [
+    {
+      "id": "mounting",
+      "scenario": "hold",
+      "method": "fem",
+      "decision": "now",
+      "question": "Does the complete modeled mounting satisfy strength, stiffness and local root convergence?",
+      "user_impact": "Root and mounting deformation can shift the sensor; an unconverged hotspot cannot support a favorable strength ranking.",
+      "targets": [
+        "Mast root, bolt lands, foot contact and base"
+      ],
+      "reason": "The declared connection transmits preload and service loads; an ideal clamped mast is a different problem.",
+      "required_for_claim": true,
+      "acceptance": "Original FoS2, 0.3 mm displacement, 10% stress and 5% displacement mesh changes over two consecutive refinements; original contact/equilibrium/quality gates.",
+      "assumptions": [
+        "Equivalent aluminum E69000 MPa, nu0.33, yield240 MPa; axial bolt and small-slip planar contact model."
+      ],
+      "not_assessed": [
+        "Actual bolt bending/shear and threads",
+        "Fatigue and plastic collapse",
+        "Continuous loading-path intermediate peaks"
+      ],
+      "load_path": "Sensor-seat force -> mast -> foot/bolt lands -> contact and locked bolts -> supported base.",
+      "load_basis": "Original [0,5,-50] N service force plus gravity, two 300 N bolt preloads.",
+      "support_basis": "Original base support, axial bolt stiffness117000 N/mm and foot friction0.2; no new artificial fixture.",
+      "result_criteria": [
+        "strength",
+        "stiffness"
+      ]
+    }
+  ],
+  "unknowns": [
+    "Real preload, friction and material calibration remain separate."
+  ],
+  "iteration_constraints": [
+    "Only change justified CAD transitions; do not change load, material, mounting or criteria.",
+    "Do not discard preload/locked hotspots."
+  ],
+  "sources": [
+    "mast.py",
+    "base.py",
+    "sensor.py",
+    "product.py",
+    "CAD-BRIEF.md"
+  ],
+  "cases": {
+    "mounting": "contact.case.json"
+  }
+}

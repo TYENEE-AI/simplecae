@@ -1,0 +1,163 @@
+{
+  "schema_version": "simplecae-task-1.0",
+  "task_id": "s03_heat_bridge",
+  "request": "A robot controller heat bridge carries 5 W to an ideal 20 C cold end; keep the bridge at or below 40 C.",
+  "scenarios": [
+    {
+      "id": "use",
+      "use": "高校机械专业学生，设计移动机器人控制板导热支座",
+      "success": "At 5 W and the same ideal 20 C cold end, maximum bridge temperature <=40 C."
+    }
+  ],
+  "checks": [
+    {
+      "id": "geometry",
+      "scenario": "use",
+      "question": "Does the bridge fit its declared mounts without interfering with the cover?",
+      "user_impact": "Avoid an efficient thermal revision that cannot be assembled.",
+      "method": "geometry",
+      "decision": "now",
+      "targets": [
+        "Mount, bridge and cover interfaces"
+      ],
+      "reason": "Avoid an efficient thermal revision that cannot be assembled.",
+      "required_for_claim": true,
+      "acceptance": "Check 40 mm length, 20 mm width, thickness <=4 mm, assembly constraints and cover clearance against CAD.",
+      "assumptions": [
+        "常导热系数167 W/(m K)的铝等效筛查假设；物性范围0–120°C"
+      ],
+      "not_assessed": [
+        "热接触阻力",
+        "冷端温度及环境",
+        "实物温升和触摸安全"
+      ]
+    },
+    {
+      "id": "network",
+      "scenario": "use",
+      "question": "Does a steady thermal-resistance estimate identify an inadequate conducting section?",
+      "user_impact": "A cheap estimate can test the direction of a CAD change before solid meshing.",
+      "method": "calculation",
+      "decision": "now",
+      "targets": [
+        "Bridge hot and cold nodes"
+      ],
+      "reason": "A cheap estimate can test the direction of a CAD change before solid meshing.",
+      "required_for_claim": true,
+      "acceptance": "At 5 W, k=167 W/(m K), cold end 20 C, hot-node temperature <=40 C.",
+      "assumptions": [
+        "常导热系数167 W/(m K)的铝等效筛查假设；物性范围0–120°C"
+      ],
+      "not_assessed": [
+        "热接触阻力",
+        "冷端温度及环境",
+        "实物温升和触摸安全"
+      ],
+      "result_criteria": [
+        "temperature"
+      ],
+      "load_path": "Heater -> bridge conducting section -> ideal cold reservoir.",
+      "load_basis": "Declared total 5 W input, unchanged between revisions.",
+      "support_basis": "Cold end fixed at 20 C; other faces insulated. Real interfaces remain unverified."
+    },
+    {
+      "id": "warmup",
+      "scenario": "use",
+      "question": "How does the assumed lumped heater warm up under the stated heat capacity?",
+      "user_impact": "Time to approach a limit depends on heat capacity; steady temperature alone does not give it.",
+      "method": "calculation",
+      "decision": "now",
+      "targets": [
+        "Heater and bridge lumped network"
+      ],
+      "reason": "Time to approach a limit depends on heat capacity; steady temperature alone does not give it.",
+      "required_for_claim": true,
+      "acceptance": "Compare the computed temperature history with the case's unchanged 40 C limit over its stated time window.",
+      "assumptions": [
+        "常导热系数167 W/(m K)的铝等效筛查假设；物性范围0–120°C"
+      ],
+      "not_assessed": [
+        "热接触阻力",
+        "冷端温度及环境",
+        "实物温升和触摸安全"
+      ],
+      "result_criteria": [
+        "temperature"
+      ],
+      "load_path": "Heater -> bridge conducting section -> ideal cold reservoir.",
+      "load_basis": "Declared total 5 W input, unchanged between revisions.",
+      "support_basis": "Cold end fixed at 20 C; other faces insulated. Real interfaces remain unverified."
+    },
+    {
+      "id": "temperature",
+      "scenario": "use",
+      "question": "Does the selected bridge satisfy the spatial temperature requirement?",
+      "user_impact": "Locate the hot region and verify whether changing only the conducting section addresses it.",
+      "method": "fem",
+      "decision": "now",
+      "targets": [
+        "Bridge solid and its hot/cold end faces"
+      ],
+      "reason": "Locate the hot region and verify whether changing only the conducting section addresses it.",
+      "required_for_claim": true,
+      "acceptance": "Maximum temperature <=40 C with the original temperature-convergence and energy-balance gates.",
+      "assumptions": [
+        "常导热系数167 W/(m K)的铝等效筛查假设；物性范围0–120°C"
+      ],
+      "not_assessed": [
+        "热接触阻力",
+        "冷端温度及环境",
+        "实物温升和触摸安全"
+      ],
+      "result_criteria": [
+        "temperature"
+      ],
+      "load_path": "Heater -> bridge conducting section -> ideal cold reservoir.",
+      "load_basis": "Declared total 5 W input, unchanged between revisions.",
+      "support_basis": "Cold end fixed at 20 C; other faces insulated. Real interfaces remain unverified."
+    },
+    {
+      "id": "physical",
+      "scenario": "use",
+      "question": "Can the real mounting maintain the modeled cold end and heat path?",
+      "user_impact": "An ideal prescribed sink can make an inadequate real cooling system look sufficient.",
+      "method": "physical_test",
+      "decision": "later",
+      "targets": [
+        "Heat-source interface, cold-end interface and real cooling"
+      ],
+      "reason": "An ideal prescribed sink can make an inadequate real cooling system look sufficient.",
+      "required_for_claim": true,
+      "acceptance": "Measure cold-end temperature and interface resistance under the declared 5 W duty before claiming real-product thermal performance.",
+      "assumptions": [
+        "常导热系数167 W/(m K)的铝等效筛查假设；物性范围0–120°C"
+      ],
+      "not_assessed": [
+        "热接触阻力",
+        "冷端温度及环境",
+        "实物温升和触摸安全"
+      ]
+    }
+  ],
+  "unknowns": [
+    "热接触阻力",
+    "冷端温度及环境",
+    "实物温升和触摸安全"
+  ],
+  "iteration_constraints": [
+    "仅改变导热截面，固定功率、材料、冷端温度和40°C上限；真实热接触缺失时保留待办"
+  ],
+  "sources": [
+    "bridge.py",
+    "cover.py",
+    "heater.py",
+    "mount.py",
+    "product.py",
+    "requirements.json"
+  ],
+  "cases": {
+    "network": "network.case.json",
+    "warmup": "warmup.case.json",
+    "temperature": "temperature.case.json"
+  }
+}

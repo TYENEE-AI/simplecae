@@ -187,6 +187,24 @@ asymptotic convergence at every sharp edge.
 
 ## Evaluated existing approaches
 
+Elastic buckling additionally verifies reference-load scale invariance. Some
+CalculiX builds can miss factors below one ([upstream issue 74](https://github.com/Dhondtguido/CalculiX/issues/74)).
+SimpleCAE retains the original eigenproblem and up to three normalized attempts,
+checks the positive spectrum after converting factors back to the original
+load units, and shares the native timeout across attempts. Only the scalable
+eigenproblem reference is normalized: service loads, fixed preload, criteria
+and the task contract stay unchanged. Failure to establish invariance withholds
+acceptance. The native factor target of 100 is numerical conditioning, not a
+required engineering safety factor. Old results without this qualification are
+not ranked as valid buckling evidence.
+
+Owned analysis workers also contain their native descendants: Windows uses a
+kill-on-close Job Object; POSIX uses a guardian in the worker's private process
+group. A direct worker kill therefore does not leave its solver running.
+Startup and lock recovery share a launch lock, so a delayed worker cannot start
+native tools after its abandoned launch has been cancelled. Interrupted attempts
+retain their budget reservation and evidence; no elapsed-time guess resets it.
+
 CalculiX supports parallel assembly/results and multithreaded SPOOLES only when
 the build links the appropriate implementation. See the author's
 [parallel execution documentation](https://www.dhondt.de/ccx_2.14.pdf) and

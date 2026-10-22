@@ -1,4 +1,5 @@
-param([string]$Python = 'python', [string]$Ccx = '', [switch]$Locked)
+param([string]$Python = 'python', [string]$Ccx = '', [switch]$Locked,
+      [ValidateRange(1,2147483647)][int]$DownloadTimeoutSeconds = 3000)
 $ErrorActionPreference = 'Stop'
 $simplecaeRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $simplecaeVenv = Join-Path $simplecaeRoot '.venv'
@@ -10,7 +11,11 @@ if (-not (Test-Path -LiteralPath (Join-Path $simplecaeVenv 'Scripts\python.exe')
 }
 $simplecaePython = Join-Path $simplecaeVenv 'Scripts\python.exe'
 & $simplecaePython (Join-Path $PSScriptRoot 'runtime_ready.py')
-$simplecaeRuntimeReady = $LASTEXITCODE -eq 0
+$simplecaeReadyCode = $LASTEXITCODE
+if ($simplecaeReadyCode -notin @(0,1)) {
+    throw 'Runtime inspection or native loading failed. Repair the reported shared libraries/runtime or configuration; Python packages were not reinstalled.'
+}
+$simplecaeRuntimeReady = $simplecaeReadyCode -eq 0
 if ($Locked) {
     & $simplecaePython -m pip install --no-cache-dir -r (Join-Path $simplecaeRoot 'requirements-lock.txt')
     if ($LASTEXITCODE -ne 0) { throw 'Locked dependency installation failed' }
@@ -20,6 +25,10 @@ if ($Locked) {
     & $simplecaePython -m pip install --no-cache-dir -e $simplecaeRoot
     if ($LASTEXITCODE -ne 0) { throw 'Python runtime installation failed' }
 } else { Write-Host 'Reusing the existing runtime; no dependency download needed.' }
+if ($Locked -or -not $simplecaeRuntimeReady) {
+    & $simplecaePython (Join-Path $PSScriptRoot 'runtime_ready.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Runtime still unavailable after Python setup; resolve the reported cause before retrying.' }
+}
 if (-not $Ccx) {
     # Reuse explicit environment/config/PATH discovery, including custom solvers.
     $simplecaeFindCode = @'
@@ -54,14 +63,17 @@ if ($Ccx) {
     $simplecaeHash = '79a674fdee735a22720bbd12bb9ccbadad1e8c8ad5b1de74e1c62f8808b2d395'
     $simplecaeArchive = Join-Path $simplecaeTools 'CalculiX-2.23.0-win-x64.zip'
     if (-not (Test-Path -LiteralPath $simplecaeArchive)) {
-        Invoke-WebRequest -Uri $simplecaeUrl -OutFile $simplecaeArchive
+        # A slow response can outlive an HTTP socket timeout. Bound the owned
+        # download worker and publish the archive only after its pinned hash passes.
+        & $simplecaePython (Join-Path $PSScriptRoot 'download_verified.py') $simplecaeUrl $simplecaeArchive $simplecaeHash --timeout $DownloadTimeoutSeconds
+        if ($LASTEXITCODE -ne 0) { throw 'CalculiX download failed; its partial file was retained. Retry after addressing the reported network/timeout issue.' }
     }
     # Use the already verified Python runtime: Agent hosts may pass a PSModulePath
     # that omits Windows PowerShell's Get-FileHash/Expand-Archive modules.
     $simplecaeActualHash = & $simplecaePython -c "import hashlib,sys; f=open(sys.argv[1],'rb'); print(hashlib.file_digest(f,'sha256').hexdigest()); f.close()" $simplecaeArchive
     if ($LASTEXITCODE -ne 0) { throw 'CalculiX archive hashing failed' }
     if ([string]$simplecaeActualHash -ne $simplecaeHash) {
-        throw 'CalculiX archive SHA-256 mismatch; refusing to extract or execute'
+        throw 'CalculiX archive SHA-256 mismatch; refusing to extract or execute. Preserve and move this invalid archive aside before retrying.'
     }
     $simplecaeDestination = [IO.Path]::GetFullPath((Join-Path $simplecaeTools 'calculix-2.23'))
     if (-not $simplecaeDestination.StartsWith($simplecaeRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {

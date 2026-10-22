@@ -8,14 +8,15 @@ def delivery_files(root, include_validation=True, include_audit=True):
     root=Path(root)
     files=[root/name for name in ('SKILL.md','pyproject.toml','requirements-lock.txt','.gitignore')]
     files.extend(root/name for name in ('README.md','README.en.md','README.zh-CN.md','CHANGELOG.md','CONTRIBUTING.md','LICENSE','NOTICE.md','打开Viewer.cmd','Open_Viewer.cmd','setup.py','MANIFEST.in') if (root/name).is_file())
-    folders=['agents','assets','examples','references','scripts','tests','licenses']
+    files.extend(root/name for name in ('sca-addon.toml',) if (root/name).is_file())
+    folders=['agents','assets','examples','references','scripts','tests','licenses','skill','.github']
     if include_validation:folders.append('validation')
     # The guide is source documentation; evidence records are excluded from
     # their own source hash to avoid circular qualification dependencies.
     elif (root/'validation/README.md').is_file():files.append(root/'validation/README.md')
     for folder in folders:
         files.extend(p for p in (root/folder).rglob('*') if p.is_file()
-                     and not any(x=='__pycache__' or x.endswith('.egg-info') for x in p.parts))
+                     and not any(x in ('__pycache__','__marimo__','.pytest_cache') or x.endswith('.egg-info') for x in p.parts))
     if not include_audit:files=[p for p in files if p!=root/'validation/release-audit.json']
     return sorted(set(files))
 

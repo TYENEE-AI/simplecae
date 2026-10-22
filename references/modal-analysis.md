@@ -28,6 +28,14 @@ shapes as diagnostic information with an indeterminate use verdict.
   have no added numerical fixtures.
 - `elastic_mode_count`: 2–30. The solver also requests two guard modes and,
   for free bodies, six rigid modes. All returned modes are audited and stored.
+- Optional `attached_masses`: entries with unique `name`, positive `mass_kg`,
+  a planar whole-face `selector`, and a source/applicability `basis`. Mass is
+  distributed by surface area using positive subtriangle weights (including
+  midside nodes), with zero added stiffness. The deck and independent mass
+  audit both include it. Fixed nodes cannot carry an attached mass. The report
+  retains mass and attachment centroid. This represents equipment distributed
+  on its attachment face; remote COM, rotational inertia and mount compliance
+  need a different justified model. Do not silently omit an actual payload.
 - Three `mesh.sizes_mm`, each 0.35–0.85 times its predecessor; default
   20,000 quadratic tetrahedra per grid, explicitly adjustable through
   `mesh.max_elements` after resource planning. Keep supports geometrically unchanged.
@@ -51,7 +59,8 @@ not an installation or printed-material qualification.
 ## Numerical evidence and boundaries
 
 The mesh remains in mm; the CalculiX deck uses m, kg, s and Pa. Density creates
-the consistent mass matrix. There are no applied service loads, prestress,
+the consistent solid mass matrix; explicit attached masses add a diagonal nodal
+mass contribution in both solver and independent audits. There are no applied service loads, prestress,
 contact or fictitious damping in this normal-mode calculation.
 
 The backend checks complete finite eigenpairs and native frequency units,

@@ -1,0 +1,136 @@
+{
+  "schema_version": "simplecae-task-1.0",
+  "task_id": "s04_inspection_arm",
+  "request": "0.2 kg末端负载，明确保持姿态与运动状态；评估驱动力矩、安装反力及0.5 mm末端精度",
+  "scenarios": [
+    {
+      "id": "use",
+      "use": "机器人集成工程师，设计桌面两连杆检测臂",
+      "success": "0.2 kg payload; <=0.5 mm tip deflection in both held poses; <=2 N m joint effort in the three declared motion states."
+    }
+  ],
+  "checks": [
+    {
+      "id": "geometry",
+      "scenario": "use",
+      "question": "Can both links, the tool and the base assemble in the declared frames?",
+      "user_impact": "Avoid a numerically valid robot assembled in the wrong coordinates.",
+      "method": "geometry",
+      "decision": "now",
+      "targets": [
+        "CAD dimensions, constraints and interfaces"
+      ],
+      "reason": "Avoid a numerically valid robot assembled in the wrong coordinates.",
+      "required_for_claim": true,
+      "acceptance": "Verify 180/140 mm link lengths, joint/port frames, assembly residuals and declared clearances.",
+      "assumptions": [
+        "连杆铝等效E=69000 MPa, nu=0.33, yield=240 MPa, density=2700 kg/m3；质量惯量由所建CAD计算"
+      ],
+      "not_assessed": [
+        "输出端关节刚度、间隙和保持控制实测",
+        "驱动散热和实际连续额定",
+        "实际运动轨迹"
+      ]
+    },
+    {
+      "id": "motion",
+      "scenario": "use",
+      "question": "Are drive demands within the declared limits during hold, acceleration and braking?",
+      "user_impact": "A holding result alone cannot qualify acceleration/braking demand.",
+      "method": "calculation",
+      "decision": "now",
+      "targets": [
+        "Drive effort in three named states"
+      ],
+      "reason": "A holding result alone cannot qualify acceleration/braking demand.",
+      "required_for_claim": true,
+      "acceptance": "Each named joint must satisfy its unchanged 2 N m limit and rating speed applicability.",
+      "assumptions": [
+        "连杆铝等效E=69000 MPa, nu=0.33, yield=240 MPa, density=2700 kg/m3；质量惯量由所建CAD计算"
+      ],
+      "not_assessed": [
+        "输出端关节刚度、间隙和保持控制实测",
+        "驱动散热和实际连续额定",
+        "实际运动轨迹"
+      ],
+      "result_criteria": [
+        "shoulder",
+        "elbow"
+      ],
+      "load_path": "Payload/tool -> second link -> elbow -> first link -> shoulder -> fixed base.",
+      "load_basis": "CAD-derived assumed-density inertials, 0.2 kg payload, gravity and named motion states.",
+      "support_basis": "Fixed base; explicitly assumed held joint stiffness for the compliance check."
+    },
+    {
+      "id": "compliance",
+      "scenario": "use",
+      "question": "Is tip deflection controlled by link bending or equivalent joint compliance?",
+      "user_impact": "Do not thicken links blindly when joint compliance dominates or the transfer model is outside its scope.",
+      "method": "fem",
+      "decision": "now",
+      "targets": [
+        "First-order link plus declared joint compliance"
+      ],
+      "reason": "Do not thicken links blindly when joint compliance dominates or the transfer model is outside its scope.",
+      "required_for_claim": true,
+      "acceptance": "Both named tip probes <=0.5 mm; retain strength, convergence, section-warping and small-response checks.",
+      "assumptions": [
+        "连杆铝等效E=69000 MPa, nu=0.33, yield=240 MPa, density=2700 kg/m3；质量惯量由所建CAD计算"
+      ],
+      "not_assessed": [
+        "输出端关节刚度、间隙和保持控制实测",
+        "驱动散热和实际连续额定",
+        "实际运动轨迹"
+      ],
+      "result_criteria": [
+        "straight/probe:tip",
+        "raised/probe:tip"
+      ],
+      "load_path": "Payload/tool -> second link -> elbow -> first link -> shoulder -> fixed base.",
+      "load_basis": "CAD-derived assumed-density inertials, 0.2 kg payload, gravity and named motion states.",
+      "support_basis": "Fixed base; explicitly assumed held joint stiffness for the compliance check."
+    },
+    {
+      "id": "physical",
+      "scenario": "use",
+      "question": "Are the assumed output-side joint stiffness and continuous actuator limits applicable?",
+      "user_impact": "URDF effort and damping are not measured stiffness or continuous motor ratings.",
+      "method": "physical_test",
+      "decision": "later",
+      "targets": [
+        "Actual materials, interfaces and service verification"
+      ],
+      "reason": "URDF effort and damping are not measured stiffness or continuous motor ratings.",
+      "required_for_claim": true,
+      "acceptance": "Obtain held-state stiffness, backlash and torque/speed/duty data before making real-robot precision or continuous-duty claims.",
+      "assumptions": [
+        "连杆铝等效E=69000 MPa, nu=0.33, yield=240 MPa, density=2700 kg/m3；质量惯量由所建CAD计算"
+      ],
+      "not_assessed": [
+        "输出端关节刚度、间隙和保持控制实测",
+        "驱动散热和实际连续额定",
+        "实际运动轨迹"
+      ]
+    }
+  ],
+  "unknowns": [
+    "输出端关节刚度、间隙和保持控制实测",
+    "驱动散热和实际连续额定",
+    "实际运动轨迹"
+  ],
+  "iteration_constraints": [
+    "首轮只允许连杆截面修改；若关节贡献主导则停止盲目加厚并明确需要关节刚度/保持状态复核"
+  ],
+  "sources": [
+    "base.py",
+    "first.py",
+    "product.py",
+    "second.py",
+    "tool.py",
+    "requirements.json"
+  ],
+  "cases": {
+    "motion": "motion.case.json",
+    "compliance": "compliance.case.json"
+  }
+}

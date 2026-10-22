@@ -32,6 +32,15 @@ def collect(root):
             notices.append({'installed_relative_path':str(entry).replace('\\','/'),
                             'notice_path':target.as_posix(),'sha256':hashlib.sha256(data).hexdigest(),
                             'text_sha256_lf':notice_text_hash(data)})
+        if not notices:
+            # Some wheels omit their license. Reuse only an explicitly audited,
+            # version-matched upstream notice; never fetch or guess one here.
+            prior=next((r for r in old['dependencies'] if r['name']==name and r['version']==version),{})
+            for entry in prior.get('notices',[]):
+                path=(root/entry['notice_path']).resolve()
+                if (entry.get('source_url','').startswith('https://') and path.is_relative_to((root/'licenses').resolve())
+                    and path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest()==entry['sha256']):
+                    notices.append(entry)
         if not notices:raise ValueError(f'{name}: no installed license/notice found; review manually')
         fields=dist.metadata
         records.append({'name':name,'version':version,'license_expression':fields.get('License-Expression'),

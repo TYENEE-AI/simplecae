@@ -1,0 +1,15 @@
+{
+  "scope": "Numerical reference, not product evidence",
+  "axial": {
+    "k_b_n_mm": 100000.0,
+    "k_c_n_mm": 196078.431372549,
+    "formula": "C=kb/(kb+kc); Fbolt=P0+C*P; Fclamp=P0-(1-C)*P; q0=P0/kb+P0/kc",
+    "relative_tolerance": 0.005
+  },
+  "friction": {
+    "formula": "p=P/A; tau=min(kt*delta,mu*p)",
+    "relative_tolerance": 0.005,
+    "motion_absolute_tolerance_mm": 1e-08,
+    "fixture": "Both interface faces tangentially guided; only slave guide translates in service. Normal direction is free on guides."
+  }
+}

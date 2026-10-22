@@ -64,7 +64,7 @@ def read_urdf(path,package_roots=None,massless_links=()):
     path=Path(path).resolve(); text=path.read_text(encoding='utf-8-sig')
     if '$(' in text or '${' in text: raise ValueError('expand xacro before URDF analysis')
     root=ET.fromstring(text)
-    if root.tag!='robot': raise ValueError('URDF root must be robot')
+    if root.tag!='robot': raise ValueError('URDF root must be robot; for MJCF use simplecae import-mjcf MODEL.xml --out out/cae/mjcf and review its handoff.json before analysis')
     links={};assets=[];joints={};parents={};children={}
     for e in root.findall('link'):
         name=e.get('name')
@@ -156,6 +156,7 @@ def read_urdf(path,package_roots=None,massless_links=()):
             if target is None or target['type']=='fixed' or (j['type']=='prismatic')!=(target['type']=='prismatic'):
                 raise ValueError('mimic target is missing or has incompatible coordinates')
     return {'name':root.get('name','robot'),'path':str(path),'sha256':sha256(path),'links':links,'joints':joints,
+            'handoff_warnings':(['URDF references 3MF visuals. For component FEM provide <link_name>.step for each analyzed link, then use robot-link-models; retain visual scale but never rescale native STEP by 0.001.'] if any(Path(a['path']).suffix.lower()=='.3mf' for a in assets) else []),
             'root':base,'children':children,'parents':parents,'assets':assets}
 
 
@@ -265,7 +266,7 @@ def load_robot_case(path):
     if c['schema_version']!='robot-1.0':raise ValueError('robot schema_version must be robot-1.0')
     keys(c['model'],['path','package_roots'],['path'],'robot model')
     urdf=(path.parent/c['model']['path']).resolve();c['model']['path']=str(urdf)
-    if not urdf.is_file() or urdf.suffix.lower()!='.urdf':raise ValueError('robot model must reference URDF')
+    if not urdf.is_file() or urdf.suffix.lower()!='.urdf':raise ValueError('robot model must reference URDF; translate MJCF with simplecae import-mjcf MODEL.xml --out out/cae/mjcf, then review frames and explicit inertials')
     packages=c['model'].get('package_roots',{})
     if not isinstance(packages,dict):raise ValueError('package_roots must be an object')
     c['model']['package_roots']={n:str((path.parent/p).resolve()) for n,p in packages.items()}
@@ -314,11 +315,18 @@ def load_robot_case(path):
     if len({p['name'] for field in ('payloads','loads') for p in c.get(field,[])})!=sum(len(c.get(f,[])) for f in ('payloads','loads')):
         raise ValueError('payload and load names must be distinct')
     for component in c.get('components',[]):
-        keys(component,['link','case_path','ports','mass_relative_tolerance','com_tolerance_mm','link_from_component'],['link','case_path','ports'],'component')
+        keys(component,['link','case_path','ports','port_load_policies','mass_relative_tolerance','com_tolerance_mm','link_from_component'],['link','case_path','ports'],'component')
         component['case_path']=str((path.parent/component['case_path']).resolve())
         if not Path(component['case_path']).is_file():raise ValueError('component case does not exist')
         if not isinstance(component['ports'],dict):raise ValueError('component ports must be an object')
         for p in component['ports'].values():selector(p)
+        policies=component.get('port_load_policies',{})
+        if not isinstance(policies,dict) or set(policies)-set(component['ports']):raise ValueError('port_load_policies must name existing component ports')
+        from .loads import validate_distribution
+        for policy in policies.values():
+            keys(policy,['distribution','allow_opposite_traction','reference'],['reference'],'port load policy')
+            validate_distribution(policy)
+            if not isinstance(policy['reference'],str) or not policy['reference'].strip():raise ValueError('port load policy needs a physical load-path reference')
         if not 0<number(component.get('mass_relative_tolerance',.02),'component mass tolerance')<1:raise ValueError('component mass tolerance must be in (0,1)')
         if 'com_tolerance_mm' in component:number(component['com_tolerance_mm'],'COM tolerance',True)
         if 'link_from_component' in component:
@@ -367,6 +375,7 @@ def analyze_robot(path,out,ccx=None,timeout=DEFAULT_NATIVE_TIMEOUT,preview=True,
         result['source_files_sha256']=guard.hashes
         result['task_contract']=copy.deepcopy(robot_contract(c,robot))
         result['assets']=robot['assets'];links=robot['links'];joints=robot['joints']
+        result['handoff_warnings']=robot.get('handoff_warnings',[])
         if any(p['link'] not in links for f in ('payloads','loads') for p in c.get(f,[])):raise ValueError('load/payload references unknown link')
         component_names=[p['link'] for p in c.get('components',[])]
         if len(set(component_names))!=len(component_names) or set(component_names)-set(links):raise ValueError('components must reference unique known links')

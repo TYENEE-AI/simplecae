@@ -9,6 +9,12 @@
 *Concept illustration, not simulation results. Reproducible example evidence appears below.*
 
 SimpleCAE combines an **Agent skill, a Python toolkit and a local results Viewer**.
+Native SimpleCADAPI handoff runs in the separate CAD environment and exports
+STEP, tagged interfaces, placements and parameter provenance. cadgen Viewer
+face references can be resolved with source-hash checks. Restricted MJCF-to-URDF
+conversion and per-link STEP association support robot handoff; display meshes
+do not establish component FEM validity. See [robot handoff](references/robot-format-handoff.md).
+
 Describe the use of your object. The Agent selects relevant parts and conditions,
 runs checks, and brings **where, why and what to change next** back to CAD.
 Geometry, material, mounting and load conditions together define the analysis.
@@ -124,6 +130,7 @@ This supports reliability through inspectable evidence; a scoped model pass is n
 - `mesh-policy` exposes the selected physics mesh contract. `advise` uses retained evidence for mesh/resource proposals, combined assembly cost, observed phase time and unknowns. It does not change accuracy or rerun automatically.
 - After a CAD edit, `bind-regions --previous` reports region face-count, area and centroid changes; current CAD-native named manifests are supported. Ambiguity never triggers silent nearest-face substitution, and semantic intent still needs review.
 - Supported linear solids and bonded assemblies can opt into `--reuse-levels`, with input/source/completed-level validation. Structured `recovery` guides the Agent's next action.
+- When a task references a missing result criterion, `task status --brief` lists the actual available keys. The Agent can correct a mistaken reference; the toolkit does not substitute another measurement or turn missing evidence into a pass.
 
 [Budgets and resources](references/execution-resources.md) · [Continuation scope](references/agent-tasks.md) · [Region binding](references/model-adapters.md)
 
@@ -152,7 +159,7 @@ Two further cases illustrate useful outcomes beyond a pass:
 ## Install the runtime
 
 This checkout includes local maintenance updates on top of 1.6.0: onboarding,
-budgets, safe continuation, region diagnostics and Viewer loading. See
+budgets, safe continuation, region diagnostics, Viewer loading and installation recovery. See
 [validation scope](validation/README.md); the archived release receipt belongs
 to the earlier snapshot and is not an installation prerequisite.
 
@@ -173,6 +180,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap.ps1
 .\.venv\Scripts\python.exe scripts/simplecae_cli.py quickstart --out outputs/first-001
 ```
 
+Windows solver downloads use unique temporary files and become reusable archives
+only after SHA-256 verification. Interrupted files are retained and do not block a
+fresh retry. The download worker limit defaults to 3000 seconds; configure it with
+`-DownloadTimeoutSeconds`. This is separate from analysis budgets and pip setup time.
+
 No shell activation is required. Bootstrap reuses a compatible local runtime and
 configured solver; otherwise it installs runtime dependencies within the declared
 version bounds. Tests are not an installation prerequisite. `-Locked` is an optional
@@ -180,6 +192,9 @@ Windows maintainer setup for the full test dependency lock. A newly downloaded
 CalculiX archive is checked before extraction. Supply `-Python PATH` or `-Ccx PATH`
 to select a full Python (including venv/ensurepip) or solver; stripped Agent Python
 runtimes may not support environment creation.
+Native shared-library/loading failures stop with a diagnostic instead of a pip
+reinstall. Only Python dependency/source setup triggers installation, followed by
+a readiness recheck.
 
 **Ubuntu / bash**
 

@@ -1,4 +1,4 @@
-"""Real text-to-cad/cadgen export fixture; run with cadgen==0.7.21.
+"""Real text-to-cad/cadgen export fixture; validated with cadgen==0.7.26.
 
 The thickness variant is a separate candidate under the same load contract.
 """
@@ -6,6 +6,8 @@ from cadgen import build123d as bd
 from cadgen import step, glb, stl
 from pathlib import Path
 import shutil
+import json
+from importlib.metadata import version
 
 
 @step(out="cadgen-beam.step")
@@ -28,3 +30,4 @@ if __name__=="__main__":
     project=Path(__file__).resolve().parent
     assets=project.parent/'robots'/'assets';assets.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(project/'cadgen-beam.stl',assets/'cadgen-beam.stl')
+    (project/'cadgen-generator.json').write_text(json.dumps({'generator':'cadgen','generator_version':version('cadgen')},indent=2)+'\n',encoding='utf-8')

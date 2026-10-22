@@ -12,7 +12,8 @@ from simplecae.workbench import create_session, RunRecorder, export_session, sna
 
 def model(path, height):
     import gmsh
-    gmsh.initialize()
+    from simplecae import gmsh_runtime
+    gmsh_runtime.initialize()
     try:
         gmsh.option.setNumber("General.Terminal", 0)
         gmsh.model.add("modal-reference")
@@ -20,7 +21,7 @@ def model(path, height):
         gmsh.model.occ.synchronize()
         gmsh.write(str(path))
     finally:
-        gmsh.finalize()
+        gmsh_runtime.finalize()
 
 
 def case(path, height, revision):

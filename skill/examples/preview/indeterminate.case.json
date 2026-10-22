@@ -1,0 +1,72 @@
+{
+  "schema_version": "2.0",
+  "model": {
+    "path": "beam.step",
+    "expected_bbox_mm": [
+      [
+        0,
+        -5,
+        -5
+      ],
+      [
+        100,
+        5,
+        5
+      ]
+    ]
+  },
+  "material": {
+    "name": "analytic_isotropic_reference",
+    "youngs_modulus_mpa": 200000.0,
+    "poisson_ratio": 0.3,
+    "failure_criterion": "not_specified",
+    "source": "Elastic constants are mathematical assumptions; no strength value or applicable failure criterion has been supplied."
+  },
+  "supports": [
+    {
+      "name": "clamp",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 0.0
+      }
+    }
+  ],
+  "loads": [
+    {
+      "name": "end_face",
+      "selector": {
+        "type": "plane",
+        "axis": "x",
+        "position_mm": 100.0
+      },
+      "total_force_n": [
+        0,
+        0,
+        -100
+      ]
+    }
+  ],
+  "criteria": {
+    "yield_safety_factor": 2.0,
+    "max_displacement_mm": 0.3
+  },
+  "mesh": {
+    "sizes_mm": [
+      5,
+      4,
+      3
+    ]
+  },
+  "conditions": {
+    "material_verified": false,
+    "dimensions_verified": false,
+    "supports_represent_actual_mounting": false,
+    "load_pattern_verified": false,
+    "self_weight_negligible": false
+  },
+  "notes": "SimpleCAE-authored mathematical example. All physical verification flags stay false. Ideal full clamp and uniform face force; gravity, fasteners and manufacturing are not evaluated.",
+  "provenance": {
+    "task_id": "preview-beam-100N"
+  }
+}

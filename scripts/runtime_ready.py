@@ -36,16 +36,38 @@ def ready(root):
         return False
     if Path(url2pathname(url.path)).resolve() != root.resolve():
         return False
-    import gmsh
-    gmsh.initialize()
-    gmsh.finalize()
     return True
 
 
-if __name__ == '__main__':
+def main(root):
+    # Only Python dependency/source problems justify pip. Native loader failures
+    # require system libraries or an execution-environment repair, not reinstall.
     try:
-        ok = ready(Path(__file__).resolve().parents[1])
+        if not ready(root):
+            print('Python runtime setup needed: incompatible dependency or source identity')
+            return 1
+    except (metadata.PackageNotFoundError, ModuleNotFoundError, StopIteration) as exc:
+        print(f'Python runtime setup needed: {exc}')
+        return 1
     except Exception as exc:
-        print(f'Runtime setup needed: {exc}')
-        ok = False
-    raise SystemExit(0 if ok else 1)
+        print(f'Runtime inspection failed; repair metadata/configuration before retrying: {exc}')
+        return 3
+    try:
+        from simplecae import gmsh_runtime
+        gmsh_runtime.initialize()
+        gmsh_runtime.finalize()
+    except ModuleNotFoundError as exc:
+        if exc.name == 'gmsh':
+            print(f'Python runtime setup needed: {exc}')
+            return 1
+        print(f'Native runtime unavailable; repair shared libraries/runtime before retrying, not pip: {exc}')
+        return 2
+    except Exception as exc:
+        print(f'Native runtime unavailable; repair shared libraries/runtime before retrying, not pip: {exc}')
+        return 2
+    print('Python dependencies, source identity and native loading are ready')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main(Path(__file__).resolve().parents[1]))

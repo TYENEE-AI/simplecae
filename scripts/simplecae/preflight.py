@@ -118,6 +118,10 @@ def preview_case(path,out,max_triangles=DEFAULT_PREVIEW_TRIANGLES):
             shifted=moment+np.cross(point-center,force)
             row={'kind':'load','name':load['name'],'body':name,'faces':selected,'point_mm':point.tolist(),'centroid_mm':center.tolist(),
                  'force_n':force.tolist(),'moment_at_point_n_mm':moment.tolist(),'moment_about_surface_center_n_mm':shifted.tolist(),'scalable':load.get('scalable',True)}
+            bounds=np.array([f['bbox_mm'] for f in selected_faces])
+            size=float(np.linalg.norm(bounds[:,3:].max(axis=0)-bounds[:,:3].min(axis=0)))
+            row['warnings']=['remote_application_point'] if np.linalg.norm(point-center)>.5*size else []
+            row['distribution']=load.get('distribution','consistent')
             table.append(row);display['loads'].append(row)
     diagnostics=support_diagnostics(display,table) if display['picking_enabled'] else {
         'available':False,'rank':None,'missing_modes':None,'missing_components':[],
@@ -137,6 +141,7 @@ def preview_case(path,out,max_triangles=DEFAULT_PREVIEW_TRIANGLES):
             if any(row['service_displacement_mm']):description+='预紧及锁定阶段为零；使用阶段规定夹具位移 '+str(row['service_displacement_mm'])+' mm（世界坐标）。'
         else:
             description=('固定载荷' if not row['scalable'] else '可缩放载荷')+'；表示点 '+str(row['point_mm'])+' mm；合力 '+str(row['force_n'])+' N；关于面中心的等效力矩 '+str(row['moment_about_surface_center_n_mm'])+' N·mm。'
+            if row['warnings']:description+=' 作用点远离载荷面中心，等效分配可能产生反向力；求解前会检查并保存节点力。'
         rows+='<tr><td>'+html.escape(row['name'])+'</td><td>'+html.escape(row['body'])+' / 面 '+html.escape(str(row['faces']))+'</td><td>'+html.escape(description)+'</td></tr>'
     script=(resource_root()/'assets/preflight.js').read_text(encoding='utf-8')
     page='<html lang="zh-CN"><meta charset="utf-8"><title>SimpleCAE 受力预览</title><style>'+STYLE+'</style><h1>先确认固定与受力</h1><p>蓝色为约束面，橙色为加载面。箭头位于声明的载荷表示点；关于面中心的等效力矩列在下表。本页没有求解强度或位移。</p><canvas id="preflight-canvas"></canvas><p id="preflight-pick"></p><button id="preflight-reset">复位视角</button><table><tr><th>区域</th><th>零件</th><th>约束 / 力与力矩</th></tr>'+rows+'</table><script id="preflight-data" type="application/json">'+payload(display)+'</script><script>'+script+'</script></html>'

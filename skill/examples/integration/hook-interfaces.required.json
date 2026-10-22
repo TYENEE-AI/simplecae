@@ -1,0 +1,4 @@
+{
+  "interface.mount": {"face_count": 1, "surface_types": ["Plane"]},
+  "interface.payload": {"face_count": 1, "surface_types": ["Plane"]}
+}

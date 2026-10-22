@@ -73,7 +73,13 @@ def advise(case_path, evidence, out):
         else:expected=structural_contract(case)
         same_contract=expected==result.get('task_contract')
     numerical_done=qualified and same_contract
-    if not numerical_done:
+    singularity=result.get('singularity_diagnostic')
+    if not numerical_done and not singularity and result.get('levels'):
+        from .singularities import diagnose
+        singularity=diagnose(case,result['levels'],result.get('assessment',{}))
+    likely_singular=bool(singularity and singularity.get('classification')=='likely_singular')
+    if not numerical_done and likely_singular:actions.extend(singularity['actions'])
+    if not numerical_done and not likely_singular:
         for name,model in models:
             relevant=[d for d in records if d.get('geometry_sha256')==sources[name]]
             faces={f['id']:f for d in relevant for f in d.get('adjacent_cad_faces',[]) if f.get('type')!='Plane'}
@@ -161,6 +167,7 @@ def advise(case_path, evidence, out):
     from .mesh_policy import mesh_policy
     output={'schema_version':'simplecae-advice-1.0','case_path':str(Path(case_path).resolve()),
         'source_bindings':guard.hashes,'model_hashes':sources,'actions':actions,'cost_projection':projection,
+        'singularity_diagnostic':singularity,
         'hardware_observation':hardware_snapshot(),'automatic_retry':False,'input_modified':False,
         'mesh_policy':mesh_policy(case),'assembly_cost_coverage':coverage,
         'execution_observation':observed,

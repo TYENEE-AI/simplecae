@@ -1,0 +1,116 @@
+{
+  "schema_version": "motion-loads-1.0",
+  "model": {
+    "path": "robot.urdf",
+    "units": "m"
+  },
+  "massless_links": [],
+  "base": "fixed",
+  "base_pose": {
+    "xyz_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "rpy_rad": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "gravity_m_s2": [
+    0.0,
+    0.0,
+    -9.81
+  ],
+  "states": [
+    {
+      "id": "hold",
+      "basis": "Explicit simultaneous two-joint hold/acceleration/braking; not entire trajectory",
+      "positions": {
+        "shoulder": 0.0,
+        "elbow": 0.0
+      },
+      "velocities": {
+        "shoulder": 0.0,
+        "elbow": -0.0
+      },
+      "accelerations": {
+        "shoulder": 0.0,
+        "elbow": -0.0
+      },
+      "loads": []
+    },
+    {
+      "id": "accelerate",
+      "basis": "Explicit simultaneous two-joint hold/acceleration/braking; not entire trajectory",
+      "positions": {
+        "shoulder": 0.0,
+        "elbow": 0.0
+      },
+      "velocities": {
+        "shoulder": 0.5,
+        "elbow": -0.5
+      },
+      "accelerations": {
+        "shoulder": 2.0,
+        "elbow": -2.0
+      },
+      "loads": []
+    },
+    {
+      "id": "brake",
+      "basis": "Explicit simultaneous two-joint hold/acceleration/braking; not entire trajectory",
+      "positions": {
+        "shoulder": 0.0,
+        "elbow": 0.0
+      },
+      "velocities": {
+        "shoulder": 0.5,
+        "elbow": -0.5
+      },
+      "accelerations": {
+        "shoulder": -2.0,
+        "elbow": 2.0
+      },
+      "loads": []
+    }
+  ],
+  "criteria": [
+    {
+      "id": "shoulder",
+      "type": "joint_effort",
+      "joint": "shoulder",
+      "target": "shoulder output",
+      "max_abs_effort": 2.0,
+      "rating_max_abs_speed": 1.0,
+      "basis": "Simulated continuous2Nm at≤1rad/s; no real torque-speed data"
+    },
+    {
+      "id": "elbow",
+      "type": "joint_effort",
+      "joint": "elbow",
+      "target": "elbow output",
+      "max_abs_effort": 2.0,
+      "rating_max_abs_speed": 1.0,
+      "basis": "Simulated continuous2Nm at≤1rad/s; no real torque-speed data"
+    }
+  ],
+  "coverage_basis": "Only three named simultaneous states",
+  "assumptions": [
+    "Rigid tree, fixed base, ideal lossless joints"
+  ],
+  "not_assessed": [
+    "Real drive thermal duty, continuum dynamics, trajectory, backlash"
+  ],
+  "conditions": {
+    "inertials_verified": false,
+    "motion_states_verified": false,
+    "ratings_verified": false,
+    "mount_verified": false
+  },
+  "provenance": {
+    "task_id": "s04_inspection_arm",
+    "revision": "r1"
+  }
+}
